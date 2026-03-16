@@ -1,0 +1,191 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<style>
+    /* CSS RIÊNG CỦA TRANG BÁO CÁO */
+    .dashboard-header {
+        margin-bottom: 30px;
+    }
+
+    .report-title {
+        color: var(--primary);
+        font-size: 2rem;
+        margin-bottom: 15px;
+        border-bottom: 2px solid var(--accent);
+        display: inline-block;
+        padding-bottom: 5px;
+    }
+
+    /* BẢNG CẢNH BÁO TỪ DSS ENGINE */
+    .alert-box {
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        font-weight: bold;
+        font-size: 1.1rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border-left: 5px solid #28a745;
+    }
+    .alert-neutral {
+        background-color: #e2e3e5;
+        color: #383d41;
+        border-left: 5px solid #6c757d;
+    }
+    .alert-error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-left: 5px solid #dc3545;
+    }
+
+    /* CHIA CỘT SO SÁNH */
+    .comparison-grid {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+
+    /* CÁC THẺ CARD */
+    .card {
+        background: var(--white);
+        border-radius: 8px;
+        padding: 25px;
+        flex: 1;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        border-top: 4px solid #bdc3c7; /* Mặc định xám (Cũ) */
+    }
+    
+    .card.optimized {
+        border-top: 4px solid var(--accent); /* Đổi sang xanh (Mới/Tốt) */
+    }
+
+    .card h2 {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+        color: var(--secondary);
+    }
+
+    .stat-box {
+        background: var(--bg-color);
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2.2rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+    .stat-unit {
+        font-size: 1rem;
+        color: #666;
+    }
+
+    /* DANH SÁCH ĐƯỜNG ĐI */
+    .route-list {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    .route-list li {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        position: relative;
+    }
+
+    .route-list li:last-child {
+        border-bottom: none;
+    }
+
+    .route-list li::before {
+        content: "➤ ";
+        color: var(--accent);
+        font-size: 0.8em;
+    }
+
+    /* CSS CHO LỖI NẾU CÓ */
+    .error-msg {
+        color: red;
+        font-weight: bold;
+    }
+
+</style>
+
+<div class="dashboard-header">
+    <h1 class="report-title">Báo Cáo Tối Ưu Hóa Phân Phối</h1>
+    <p>Phân tích mô hình TSP bằng thuật toán Nearest Neighbor Model.</p>
+</div>
+
+<!-- Nút quay lại nạp lại data -->
+<div style="margin-bottom: 20px;">
+    <a href="{% url 'dashboard' %}" class="btn-run" style="text-decoration:none; display:inline-block; font-size:0.9rem;">
+        ↻ Phân tích lại dữ liệu hiện tại
+    </a>
+</div>
+
+{% if report.error %}
+    <!-- KIỂM TRA LỖI NẠP FILE CSV -->
+    <div class="alert-box alert-error">
+        {{ report.error }}
+    </div>
+{% else %}
+    <!-- HIỂN THỊ CẢNH BÁO DSS -->
+    <div class="alert-box {% if report.savings > 0 %}alert-success{% else %}alert-neutral{% endif %}">
+        💡 KẾT LUẬN TỪ HỆ THỐNG:<br>
+        {{ report.recommendation }}
+    </div>
+
+    <!-- KHUNG SO SÁNH 2 BÊN -->
+    <div class="comparison-grid">
+
+        <!-- CỘT 1: TUYẾN ĐƯỜNG CŨ -->
+        <div class="card">
+            <h2>Lộ Trình Hiện Tại (Đã Nhập)</h2>
+            <div class="stat-box">
+                <div class="stat-value">{{ report.current_distance }}</div>
+                <div class="stat-unit">đv khoảng cách</div>
+            </div>
+            
+            <h3>Thứ tự các điểm:</h3>
+            <ul class="route-list">
+                {% for name in report.current_route_names %}
+                    <li>Trạm {{ forloop.counter }}: {{ name }}</li>
+                {% empty %}
+                    <li style="color:red">Chưa có dữ liệu tuyến cũ trong file routes.csv</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- CỘT 2: TUYẾN ĐƯỜNG MỚI TỪ AI -->
+        <div class="card optimized">
+            <h2>Lộ Trình Đề Xuất (Nearest Neighbor)</h2>
+            <div class="stat-box">
+                <div class="stat-value" style="color: var(--accent);">{{ report.optimized_distance }}</div>
+                <div class="stat-unit">đv khoảng cách</div>
+            </div>
+
+            <!-- CHỈ HIỂN THỊ KHI CÓ TIẾT KIỆM -->
+            {% if report.savings > 0 %}
+            <div style="text-align:center; margin-top:-10px; margin-bottom: 15px; color:#28a745; font-weight:bold;">
+                ⬇ Tiết kiệm {{ report.savings }} đv ({{ report.savings_percent }}%)
+            </div>
+            {% endif %}
+            
+            <h3>Thứ tự các điểm tối ưu:</h3>
+            <ul class="route-list">
+                {% for name in report.optimized_route_names %}
+                    <li>Trạm {{ forloop.counter }}: {{ name }}</li>
+                {% empty %}
+                    <li style="color:red">Không tính toán được</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+    </div>
+{% endif %}
+{% endblock %}

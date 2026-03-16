@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống DSS Logistics</title>
+    <style>
+        /* CSS RE-SET VÀ BIẾN MÀU */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #3498db;
+            --bg-color: #f8f9fa;
+            --text: #333;
+            --white: #fff;
+            --border: #ddd;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* HEADER & NAVIGATION */
+        header {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 1rem 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            width: 80%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--white);
+            text-decoration: none;
+        }
+        .logo span {
+            color: var(--accent);
+        }
+
+        .nav-links a {
+            color: var(--white);
+            text-decoration: none;
+            margin-left: 20px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        .btn-run {
+            background-color: var(--accent);
+            padding: 8px 15px;
+            border-radius: 4px;
+        }
+
+        .btn-run:hover {
+            background-color: #2980b9;
+            color: #fff;
+        }
+
+        /* MAIN CONTENT AREA */
+        main {
+            min-height: 80vh;
+            padding: 40px 0;
+        }
+
+        /* FOOTER */
+        footer {
+            background-color: var(--secondary);
+            color: var(--white);
+            text-align: center;
+            padding: 1.5rem 0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <nav>
+                <a href="{% url 'home' %}" class="logo">DSS <span>Logistics</span></a>
+                <div class="nav-links">
+                    <a href="{% url 'home' %}">Tổng quan</a>
+                    <a href="{% url 'upload_data' %}">Nạp Dữ Liệu</a>
+                    <a href="/admin" target="_blank">Cổng quản trị</a>
+                    <a href="{% url 'dashboard' %}" class="btn-run">Chạy DSS Báo Cáo</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Khối này sẽ bị ghi đè bởi những file template con (home.html, dashboard.html) -->
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Hệ thống Hỗ trợ Quyết định (DSS) - Đồ án Phân phối Hàng hóa.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

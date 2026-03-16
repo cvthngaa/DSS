@@ -1,0 +1,72 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<style>
+    /* CSS RIÊNG CỦA TRANG CHỦ */
+    .hero {
+        text-align: center;
+        background: #fff;
+        padding: 50px 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 40px;
+    }
+
+    .hero h1 {
+        font-size: 2.5rem;
+        color: var(--primary);
+        margin-bottom: 15px;
+    }
+
+    .hero p {
+        font-size: 1.1rem;
+        color: #666;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .features {
+        display: flex;
+        justify-content: space-between;
+        gap: 30px;
+        margin-top: 50px;
+    }
+
+    .feature-card {
+        background: #fff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        flex: 1;
+        text-align: center;
+        border-top: 4px solid var(--accent);
+    }
+
+    .feature-card h3 {
+        margin-bottom: 15px;
+        color: var(--secondary);
+    }
+</style>
+
+<div class="hero">
+    <h1>Hệ Thống Hỗ Trợ Quyết Định (DSS) Phân Phối Hàng Hóa</h1>
+    <p>Giải pháp thông minh giúp tính toán và tối ưu hóa lộ trình giao hàng (TSP), so sánh chi phí và tự động đưa ra các khuyến nghị chiến lược dựa trên thuật toán Nearest Neighbor.</p>
+</div>
+
+<div class="features">
+    <div class="feature-card">
+        <h3>1. Data Management</h3>
+        <p>Hệ thống thu thập dữ liệu về Kho và Khách hàng, tự động lập Ma trận khoảng cách.</p>
+    </div>
+    
+    <div class="feature-card">
+        <h3>2. Model Management</h3>
+        <p>Thuật toán Láng giềng gần nhất (Nearest Neighbor) giải quyết bài toán TSP tốc độ cao.</p>
+    </div>
+    
+    <div class="feature-card">
+        <h3>3. Knowledge & UI</h3>
+        <p>Đưa ra luật (Rules) so sánh phần trăm để ra quyết định và trình chiếu trực quan.</p>
+    </div>
+</div>
+{% endblock %}
