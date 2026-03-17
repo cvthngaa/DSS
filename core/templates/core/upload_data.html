@@ -2,87 +2,315 @@
 
 {% block content %}
 <style>
-    .upload-container {
-        max-width: 600px;
-        margin: 50px auto;
-        background: #fff;
-        padding: 30px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    .upload-wrapper {
+        max-width: 800px;
+        margin: 40px auto;
+        background: var(--white);
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
     }
-    .upload-container h2 {
-        color: var(--primary);
-        margin-bottom: 20px;
+
+    .upload-header {
+        background: var(--primary);
+        color: white;
+        padding: 25px 30px;
         text-align: center;
-        border-bottom: 2px solid var(--accent);
-        padding-bottom: 10px;
     }
-    .form-group {
-        margin-bottom: 20px;
+
+    .upload-header h2 {
+        margin: 0;
+        font-size: 1.8rem;
     }
-    .form-group label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: bold;
-        color: var(--secondary);
+
+    .upload-header p {
+        margin-top: 8px;
+        opacity: 0.9;
+        font-size: 0.95rem;
     }
-    .form-group input[type="file"] {
-        display: block;
+
+    .upload-content {
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+    }
+
+    /* Vùng thả file / chọn file */
+    .file-drop-area {
+        border: 2px dashed #bdc3c7;
+        border-radius: 10px;
+        padding: 40px 20px;
+        text-align: center;
+        background: #f8f9fa;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .file-drop-area:hover {
+        border-color: var(--accent);
+        background: #eff6fb;
+    }
+
+    .file-drop-area input[type="file"] {
+        position: absolute;
         width: 100%;
-        padding: 10px;
-        border: 1px solid var(--border);
-        border-radius: 4px;
-    }
-    .btn-submit {
-        background-color: var(--primary);
-        color: #fff;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 4px;
+        height: 100%;
+        top: 0;
+        left: 0;
+        opacity: 0;
         cursor: pointer;
-        width: 100%;
+    }
+
+    .file-msg {
         font-size: 1.1rem;
-        transition: background 0.3s;
+        color: #7f8c8d;
+        font-weight: 500;
+        margin-top: 10px;
     }
-    .btn-submit:hover {
-        background-color: var(--secondary);
+
+    .file-icon {
+        font-size: 40px;
+        color: var(--accent);
+        margin-bottom: 10px;
     }
-    .messages {
+
+    /* Các Alert */
+    .csv-alert {
+        padding: 15px 20px;
+        border-radius: 8px;
         margin-bottom: 20px;
-        padding: 15px;
-        border-radius: 5px;
-        background-color: #d4edda;
+    }
+
+    .csv-alert-success {
+        background: #d4edda;
         color: #155724;
         border-left: 5px solid #28a745;
     }
+
+    .csv-alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border-left: 5px solid #dc3545;
+    }
+
+    /* Khối cấu trúc Model */
+    .instructions-box {
+        background: #fff3cd;
+        border: 1px solid #ffeeba;
+        border-radius: 8px;
+        padding: 20px;
+        color: #856404;
+    }
+    .instructions-box h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        color: #664d03;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .csv-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        background: white;
+    }
+    .csv-table th, .csv-table td {
+        border: 1px solid #ffeeba;
+        padding: 8px 12px;
+        text-align: left;
+    }
+    .csv-table th {
+        background: #ffe8a1;
+        font-weight: bold;
+    }
+    .csv-table tr:first-child td {
+        background: #eafaf1;
+        color: #27ae60;
+        font-weight: bold;
+    }
+
+    /* Nhóm radio */
+    .radio-group {
+        margin-top: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: #fdfdfd;
+        padding: 15px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+    .radio-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+    }
+    .radio-control input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    /* Nút Submit */
+    .btn-submit {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 14px 24px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        margin-top: 10px;
+    }
+    .btn-submit:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+    }
 </style>
 
-<div class="upload-container">
-    <h2>Cập Nhật Dữ Liệu CSV</h2>
-    
-    {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-                <p>{{ message }}</p>
-            {% endfor %}
-        </div>
-    {% endif %}
+<div class="upload-wrapper">
+    <div class="upload-header">
+        <h2>Tải Dữ Liệu Địa Điểm (CSV)</h2>
+        <p>Thêm danh sách điểm giao hàng từ file Excel/CSV</p>
+    </div>
 
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="form-group">
-            <label for="locations_file">1. Tệp Danh sách Điểm (locations.csv)</label>
-            <input type="file" name="locations_file" id="locations_file" accept=".csv">
-            <small style="color:#666; display:block; margin-top:5px;">Cấu trúc: id, name, x, y, is_depot (0/1)</small>
-        </div>
-        
-        <div class="form-group">
-            <label for="routes_file">2. Tệp Tuyến đường Mẫu (routes.csv)</label>
-            <input type="file" name="routes_file" id="routes_file" accept=".csv">
-            <small style="color:#666; display:block; margin-top:5px;">Cấu trúc: route_id, route_name, location_id, stop_order</small>
-        </div>
-        
-        <button type="submit" class="btn-submit">Tải Lên và Cập Nhật</button>
-    </form>
+    <div class="upload-content">
+        <!-- Thông báo lỗi / thành công (Django Messages & Form Errors) -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="csv-alert {% if message.tags == 'error' %}csv-alert-error{% else %}csv-alert-success{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if form.errors and not form.non_field_errors %}
+            <div class="csv-alert csv-alert-error">
+                <ul style="margin: 0; padding-left: 20px;">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+            <div class="csv-alert csv-alert-error">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Khu vực tải file -->
+            <div class="form-group">
+                <label style="font-weight: bold; color: var(--primary); margin-bottom: 8px; display: block;">
+                    1. Chọn File CSV
+                </label>
+                <div class="file-drop-area" id="drop-area">
+                    <!-- Ẩn input file mặc định và bọc nó trong vùng này -->
+                    {{ form.csv_file }}
+                    
+                    <div class="file-icon">📄</div>
+                    <div class="file-msg" id="file-msg">
+                        Kéo thả file .csv vào đây, hoặc click để chọn file
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cấu trúc file mẫu -->
+            <div class="instructions-box">
+                <h4>⚠️ Hướng Dẫn Định Dạng File CSV</h4>
+                <ul style="padding-left: 20px; margin-bottom: 10px;">
+                    <li>File bắt buộc phải có ít nhất 3 cột: <strong>name</strong> (tên), <strong>latitude</strong> (vĩ độ), <strong>longitude</strong> (kinh độ).</li>
+                    <li>Có thể dùng tên cột viết tắt như: <strong>ten, lat, lng</strong>.</li>
+                    <li><strong style="color: #27ae60;">Dòng dữ liệu đầu tiên</strong> sẽ mặc định được tính làm <strong>Kho (Depot)</strong>. Các dòng dưới là khách hàng.</li>
+                </ul>
+                <p><strong>Ví dụ file chuẩn:</strong></p>
+                <table class="csv-table">
+                    <thead>
+                        <tr>
+                            <th>name</th>
+                            <th>latitude</th>
+                            <th>longitude</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Kho chính</td>
+                            <td>10.7769</td>
+                            <td>106.7009</td>
+                        </tr>
+                        <tr>
+                            <td>Khách hàng 1</td>
+                            <td>10.7626</td>
+                            <td>106.6601</td>
+                        </tr>
+                        <tr>
+                            <td>Khách hàng 2</td>
+                            <td>10.7812</td>
+                            <td>106.6823</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Chế độ Import -->
+            <div class="form-group" style="margin-top: 10px;">
+                <label style="font-weight: bold; color: var(--primary); display: block;">
+                    2. Tùy chọn Import
+                </label>
+                <div class="radio-group">
+                    {% for radio in form.import_mode %}
+                        <label class="radio-control">
+                            {{ radio.tag }}
+                            <span>{{ radio.choice_label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn-submit">
+                ☁️ Tải Lên & Xử Lý Dữ Liệu
+            </button>
+        </form>
+    </div>
 </div>
+
+<script>
+    // Hiện tên file khi người dùng chọn file
+    const fileInput = document.querySelector('input[type="file"]');
+    const fileMsg = document.getElementById('file-msg');
+    const dropArea = document.getElementById('drop-area');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                fileMsg.innerHTML = `<span style="color:#2980b9; font-weight:bold;">Đã chọn: ${e.target.files[0].name}</span>`;
+                dropArea.style.borderColor = '#2980b9';
+                dropArea.style.background = '#eaf4ff';
+            } else {
+                fileMsg.innerHTML = 'Kéo thả file .csv vào đây, hoặc click để chọn file';
+                dropArea.style.borderColor = '#bdc3c7';
+                dropArea.style.background = '#f8f9fa';
+            }
+        });
+    }
+</script>
 {% endblock %}

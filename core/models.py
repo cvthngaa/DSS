@@ -2,15 +2,25 @@ from django.db import models
 
 class Location(models.Model):
     """
-    Lưu trữ thông tin các điểm: điểm xuất phát (depot) hoặc khách hàng.
+    Lưu trữ điểm giao hàng hoặc Kho xuất phát.
+    Có tọa độ thật: latitude, longitude để hiển thị trên bản đồ.
+    [DSS] → Thuộc phân hệ Data Management.
     """
     name = models.CharField(max_length=100, help_text="Tên điểm giao hàng hoặc Kho")
-    x = models.FloatField(help_text="Tọa độ X")
-    y = models.FloatField(help_text="Tọa độ Y")
+    
+    # Tọa độ bản đồ thực tế
+    latitude = models.FloatField(default=0.0, help_text="Vĩ độ (latitude) - tọa độ bắc/nam")
+    longitude = models.FloatField(default=0.0, help_text="Kinh độ (longitude) - tọa độ đông/tây")
+    
     is_depot = models.BooleanField(default=False, help_text="Đánh dấu đây là điểm xuất phát (Kho)")
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        ordering = ['-is_depot', 'name'] # Kho luôn hiển thị trước, rồi mới tới KH
 
     def __str__(self):
-        return f"{self.name} ({self.x}, {self.y})"
+        type_label = "[Kho]" if self.is_depot else "[KH]"
+        return f"{type_label} {self.name} ({self.latitude:.4f}, {self.longitude:.4f})"
 
 
 class RoutePlan(models.Model):

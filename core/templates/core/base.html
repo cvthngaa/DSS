@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,7 +35,7 @@
             background-color: var(--primary);
             color: var(--white);
             padding: 1rem 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         .container {
@@ -56,6 +57,7 @@
             color: var(--white);
             text-decoration: none;
         }
+
         .logo span {
             color: var(--accent);
         }
@@ -99,6 +101,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <header>
@@ -107,9 +110,9 @@
                 <a href="{% url 'home' %}" class="logo">DSS <span>Logistics</span></a>
                 <div class="nav-links">
                     <a href="{% url 'home' %}">Tổng quan</a>
-                    <a href="{% url 'upload_data' %}">Nạp Dữ Liệu</a>
-                    <a href="/admin" target="_blank">Cổng quản trị</a>
-                    <a href="{% url 'dashboard' %}" class="btn-run">Chạy DSS Báo Cáo</a>
+                    <a href="{% url 'manage_locations' %}">📍 Địa điểm</a>
+                    <a href="{% url 'upload_data' %}">☁️ Upload CSV</a>
+                    <a href="{% url 'map_result' %}" class="btn-run">🗘️ Tính Tuyến Tối Ưu</a>
                 </div>
             </nav>
         </div>
@@ -128,4 +131,5 @@
     </footer>
 
 </body>
+
 </html>

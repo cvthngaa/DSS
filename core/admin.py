@@ -3,9 +3,10 @@ from .models import Location, RoutePlan, RouteStop
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'x', 'y', 'is_depot')
+    list_display = ('name', 'latitude', 'longitude', 'is_depot')
     list_filter = ('is_depot',)
     search_fields = ('name',)
+
 
 
 class RouteStopInline(admin.TabularInline):

@@ -1,0 +1,4 @@
+# Bỏ qua tất cả Django HTML templates - chứa cú pháp { { } } của Django
+# mà Prettier sẽ phá vỡ khi format
+**/templates/**/*.html
+*.html

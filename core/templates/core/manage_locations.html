@@ -1,0 +1,500 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<!-- Leaflet CSS - từ CDN, không cần cài đặt -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+    .page-title {
+        color: var(--primary);
+        font-size: 1.8rem;
+        margin-bottom: 5px;
+        border-bottom: 2px solid var(--accent);
+        display: inline-block;
+        padding-bottom: 5px;
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin-bottom: 20px;
+    }
+
+    /* LAYOUT CHÍNH: BẢN ĐỒ Ở TRÊN, DANH SÁCH + FORM Ở DƯỚI */
+    #map {
+        width: 100%;
+        height: 420px;
+        border-radius: 10px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+        margin-bottom: 25px;
+        border: 2px solid var(--border);
+    }
+
+    .map-hint {
+        background: #eaf4ff;
+        border: 1px solid #b3d7f5;
+        border-radius: 5px;
+        padding: 8px 14px;
+        font-size: 0.9rem;
+        color: #1a6fa8;
+        margin-bottom: 20px;
+    }
+
+    /* LAYOUT 2 CỘT PHẦN DƯỚI */
+    .locations-layout {
+        display: flex;
+        gap: 30px;
+        align-items: flex-start;
+    }
+
+    /* CỘT TRÁI: DANH SÁCH */
+    .locations-list {
+        flex: 1.5;
+    }
+
+    /* CỘT PHẢI: FORM NHẬP */
+    .locations-form {
+        flex: 1;
+        background: var(--white);
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        position: sticky;
+        top: 20px;
+    }
+
+    .locations-form h2 {
+        color: var(--secondary);
+        margin-bottom: 20px;
+        font-size: 1.2rem;
+        border-left: 4px solid var(--accent);
+        padding-left: 10px;
+    }
+
+    /* FORM FIELDS */
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: var(--secondary);
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"] {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        font-size: 1rem;
+        outline: none;
+        transition: border 0.2s;
+    }
+
+    .form-group input:focus {
+        border-color: var(--accent);
+    }
+
+    .form-group-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    .form-group-row .form-group {
+        flex: 1;
+    }
+
+    /* Highlight field khi bản đồ điền vào */
+    .coords-highlight {
+        border-color: #27ae60 !important;
+        background: #eafaf1 !important;
+        transition: all 0.3s ease;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 15px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent);
+        cursor: pointer;
+    }
+
+    .checkbox-group label {
+        font-weight: 600;
+        color: var(--secondary);
+        cursor: pointer;
+    }
+
+    .btn-save {
+        width: 100%;
+        padding: 12px;
+        background: var(--accent);
+        color: var(--white);
+        border: none;
+        border-radius: 5px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-save:hover {
+        background: #2980b9;
+    }
+
+    /* BẢNG DANH SÁCH */
+    .table-container {
+        background: var(--white);
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .table-container h2 {
+        color: var(--secondary);
+        margin-bottom: 15px;
+        font-size: 1.2rem;
+        border-left: 4px solid #28a745;
+        padding-left: 10px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .data-table th {
+        background: var(--primary);
+        color: var(--white);
+        text-align: left;
+        padding: 10px 12px;
+    }
+
+    .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table tr:hover td {
+        background: #f8f9fa;
+    }
+
+    .depot-badge {
+        background: #2c3e50;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.78rem;
+        font-weight: bold;
+    }
+
+    .customer-badge {
+        background: var(--accent);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.78rem;
+    }
+
+    .btn-delete {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: background 0.2s;
+    }
+
+    .btn-delete:hover {
+        background: #c0392b;
+    }
+
+    .empty-msg {
+        text-align: center;
+        color: #999;
+        padding: 20px;
+        font-style: italic;
+    }
+
+    .messages-box {
+        background: #d4edda;
+        color: #155724;
+        border-left: 4px solid #28a745;
+        padding: 12px 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        font-size: 0.95rem;
+    }
+
+    .error-box {
+        background: #f8d7da;
+        color: #721c24;
+        border-left: 4px solid #e74c3c;
+        padding: 12px 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
+
+    .count-badge {
+        background: var(--accent);
+        color: white;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        margin-left: 8px;
+    }
+</style>
+
+<h1 class="page-title">Quản Lý Địa Điểm Giao Hàng</h1>
+<p class="page-subtitle">Click lên bản đồ để lấy tọa độ tự động, hoặc nhập tay vào form bên dưới.</p>
+
+{% if messages %}
+{% for message in messages %}
+{% if 'thành công' in message.message|lower or 'Đã' in message.message %}
+<div class="messages-box">✓ {{ message }}</div>
+{% else %}
+<div class="error-box">⚠ {{ message }}</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+<!-- BẢN ĐỒ LEAFLET -->
+<div class="map-hint">
+    🗺️ <strong>Hướng dẫn:</strong> Click chuột vào bất kỳ vị trí nào trên bản đồ → Tọa độ sẽ tự động điền vào form bên
+    dưới.
+</div>
+<div id="map"></div>
+
+<!-- DANH SÁCH + FORM -->
+<div class="locations-layout">
+    <!-- CỘT TRÁI: DANH SÁCH ĐIỂM ĐÃ NHẬP -->
+    <div class="locations-list">
+        <div class="table-container">
+            <h2>
+                Danh sách địa điểm
+                <span class="count-badge">{{ locations|length }} điểm</span>
+            </h2>
+            <div style="margin-bottom: 15px;">
+                <a href="{% url 'upload_data' %}" class="btn-save" style="background:#27ae60; text-decoration:none; display:inline-block; width:auto; padding:8px 15px;">☁️ Tải lên từ CSV</a>
+            </div>
+
+            {% if locations %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Tên điểm</th>
+                        <th>Loại</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Xóa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for loc in locations %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ loc.name }}</strong></td>
+                        <td>
+                            {% if loc.is_depot %}
+                            <span class="depot-badge">🏭 KHO</span>
+                            {% else %}
+                            <span class="customer-badge">📦 KH</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ loc.latitude }}</td>
+                        <td>{{ loc.longitude }}</td>
+                        <td>
+                            <a href="{% url 'delete_location' loc.id %}" class="btn-delete"
+                                style="text-decoration:none; display:inline-block;"
+                                onclick="return confirm('Xác nhận xóa: {{ loc.name|escapejs }}?')">
+                                Xóa
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty-msg">Chưa có địa điểm nào. Hãy thêm ở bên phải hoặc click lên bản đồ!</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: FORM THÊM MỚI -->
+    <div class="locations-form">
+        <h2>➕ Thêm địa điểm mới</h2>
+        <form method="post" action="{% url 'add_location' %}">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="name">Tên địa điểm *</label>
+                <input type="text" id="name" name="name" placeholder="VD: Kho Chính, Khách hàng A..." autocomplete="off"
+                    required>
+            </div>
+
+            <div class="form-group-row">
+                <div class="form-group">
+                    <label for="lat-input">Latitude *</label>
+                    <!-- id="lat-input" để JS tự điền khi click bản đồ -->
+                    <input type="number" id="lat-input" name="latitude" step="any" placeholder="Click bản đồ..."
+                        autocomplete="off" required>
+                </div>
+                <div class="form-group">
+                    <label for="lng-input">Longitude *</label>
+                    <input type="number" id="lng-input" name="longitude" step="any" placeholder="Click bản đồ..."
+                        autocomplete="off" required>
+                </div>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="is_depot" name="is_depot" value="1">
+                <label for="is_depot">🏭 Đây là Kho xuất phát (Depot)</label>
+            </div>
+
+            <button type="submit" class="btn-save">💾 Lưu địa điểm</button>
+        </form>
+
+        <hr style="margin: 20px 0; border-color: #eee;">
+        <p style="font-size:0.85rem; color:#999; text-align:center;">
+            Sau khi thêm đủ điểm, nhấn <strong>"Chạy DSS Báo Cáo"</strong> ở thanh menu.
+        </p>
+    </div>
+</div>
+
+<!-- Leaflet JS - CDN -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // =============================================================
+    // KHỞI TẠO BẢN ĐỒ LEAFLET
+    // =============================================================
+
+    // Tọa độ trung tâm mặc định: Hồ Chí Minh
+    var DEFAULT_LAT = 10.7769;
+    var DEFAULT_LNG = 106.7009;
+    var DEFAULT_ZOOM = 13;
+
+    // Khởi tạo bản đồ, gắn vào div#map
+    var map = L.map('map').setView([DEFAULT_LAT, DEFAULT_LNG], DEFAULT_ZOOM);
+
+    // Tile layer CARTO Voyager - không yêu cầu Referer, hoạt động tốt từ localhost
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '© <a href="https://carto.com/">CARTO</a> | © <a href="https://www.openstreetmap.org">OpenStreetMap</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+
+    // =============================================================
+    // ICON TÙY CHỈNH CHO MARKER
+    // =============================================================
+    var depotIcon = L.divIcon({
+        html: '<div style="background:#2c3e50;color:white;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-size:16px;box-shadow:0 2px 5px rgba(0,0,0,0.4)">🏭</div>',
+        className: '',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+    });
+
+    var customerIcon = L.divIcon({
+        html: '<div style="background:#3498db;color:white;border-radius:50%;width:28px;height:28px;line-height:28px;text-align:center;font-size:14px;box-shadow:0 2px 5px rgba(0,0,0,0.3)">📦</div>',
+        className: '',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+    });
+
+    // Icon để hiển thị vị trí vừa click (màu xanh lá)
+    var clickedIcon = L.divIcon({
+        html: '<div style="background:#27ae60;color:white;border-radius:50%;width:28px;height:28px;line-height:28px;text-align:center;font-size:16px;box-shadow:0 2px 5px rgba(0,0,0,0.4)">📍</div>',
+        className: '',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+    });
+
+    // =============================================================
+    // VẼ CÁC MARKER CHO CÁC ĐIỂM ĐÃ LƯU TRONG DATABASE
+    // =============================================================
+    // Django truyền dữ liệu locations xuống thông qua context.
+    // Ta dùng vòng lặp để push vào mảng nhằm tránh lỗi cú pháp JS (đặc biệt là dấu phẩy cuối cùng)
+    var existingLocations = [];
+    {% for loc in locations %}
+    existingLocations.push({
+        name: "{{ loc.name|escapejs }}",
+        lat: parseFloat("{{ loc.latitude }}".replace(',', '.')),
+        lng: parseFloat("{{ loc.longitude }}".replace(',', '.')),
+        isDepot: {{ loc.is_depot|yesno:"true,false" }}
+});
+    {% endfor %}
+
+    var bounds = [];  // Dùng để fit bản đồ vừa vặn với tất cả điểm
+
+    existingLocations.forEach(function (loc) {
+        var icon = loc.isDepot ? depotIcon : customerIcon;
+        var marker = L.marker([loc.lat, loc.lng], { icon: icon });
+        marker.bindPopup(
+            '<b>' + (loc.isDepot ? '🏭 ' : '📦 ') + loc.name + '</b>' +
+            '<br>Lat: ' + loc.lat.toFixed(5) +
+            '<br>Lng: ' + loc.lng.toFixed(5)
+        );
+        marker.addTo(map);
+        bounds.push([loc.lat, loc.lng]);
+    });
+
+    // Nếu có markers, fit bản đồ để hiển thị tất cả
+    if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [40, 40] });
+    }
+
+    // =============================================================
+    // XỬ LÝ CLICK LÊN BẢN ĐỒ → TỰ ĐIỀN VÀO FORM
+    // =============================================================
+    var clickMarker = null;  // Biến giữ marker tạm thời khi click
+
+    map.on('click', function (e) {
+        var lat = e.latlng.lat;
+        var lng = e.latlng.lng;
+
+        // Làm tròn 6 chữ số thập phân
+        lat = parseFloat(lat.toFixed(6));
+        lng = parseFloat(lng.toFixed(6));
+
+        // Điền vào 2 ô input trong Form
+        var latInput = document.getElementById('lat-input');
+        var lngInput = document.getElementById('lng-input');
+
+        latInput.value = lat;
+        lngInput.value = lng;
+
+        // Đổi màu ô input để user biết đã tự điền
+        latInput.classList.add('coords-highlight');
+        lngInput.classList.add('coords-highlight');
+        setTimeout(function () {
+            latInput.classList.remove('coords-highlight');
+            lngInput.classList.remove('coords-highlight');
+        }, 1500);
+
+        // Xóa marker click cũ (nếu có), thêm marker mới
+        if (clickMarker) {
+            map.removeLayer(clickMarker);
+        }
+        clickMarker = L.marker([lat, lng], { icon: clickedIcon });
+        clickMarker.bindPopup(
+            '<b>📍 Vị trí đã chọn</b><br>Lat: ' + lat + '<br>Lng: ' + lng +
+            '<br><small>Hãy điền tên rồi bấm Lưu.</small>'
+        ).openPopup();
+        clickMarker.addTo(map);
+
+        // Tự focus vào ô tên để người dùng gõ tiếp nhanh hơn
+        document.getElementById('name').focus();
+    });
+</script>
+{% endblock %}
