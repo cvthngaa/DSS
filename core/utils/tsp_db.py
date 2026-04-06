@@ -2,19 +2,18 @@
 core/utils/tsp_db.py
 [DSS] - Model Management + DSS Engine
 
-Đọc Location từ SQLite, chạy thuật toán Nearest Neighbor (Haversine),
-trả về thứ tự tối ưu để frontend vẽ lên bản đồ + gọi OSRM.
+Đọc Location từ SQLite, chạy các thuật toán Nearest Neighbor, 2-opt, GA, ACO
+dựa trên khoảng cách đường bộ thực tế từ OSRM (Table API).
 """
 
 import math
-import itertools
+import json
+import urllib.request
+import urllib.error
+import random
 from ..models import Location
+from .tsp_math import solve_tsp_2opt, solve_tsp_ga, solve_tsp_aco
 
-
-
-# ─────────────────────────────────────────────
-# AUTO-SEED: tự động tạo dữ liệu khi DB trống
-# ─────────────────────────────────────────────
 DEFAULT_LOCATIONS = [
     {"name": "Kho Tân Bình (Mẫu)",      "latitude": 10.8017, "longitude": 106.6500, "is_depot": True},
     {"name": "Khách hàng Quận 1",      "latitude": 10.7769, "longitude": 106.7009, "is_depot": False},
@@ -22,90 +21,60 @@ DEFAULT_LOCATIONS = [
 ]
 
 def _seed_sample_data():
-    """Tạo 3 điểm mẫu HCM nếu DB đang trống. Chỉ chạy 1 lần."""
     if Location.objects.exists():
-        return  # Đã có dữ liệu, không làm gì
+        return
     for data in DEFAULT_LOCATIONS:
         Location.objects.create(**data)
 
-
-# ─────────────────────────────────────────────
-# 1. HAVERSINE: tính khoảng cách thực trên Trái Đất
-# ─────────────────────────────────────────────
 def haversine(loc1, loc2):
-    """
-    Tính khoảng cách (km) giữa 2 điểm dựa trên Latitude/Longitude thực tế.
-    Công thức Haversine đúng trên mặt cầu ( khác với Euclid chỉ dùng x/y phẳng ).
-    """
-    R = 6371  # Bán kính Trái Đất tính bằng km
-
+    R = 6371
     lat1, lon1 = math.radians(loc1.latitude),  math.radians(loc1.longitude)
     lat2, lon2 = math.radians(loc2.latitude),  math.radians(loc2.longitude)
-
     dlat = lat2 - lat1
     dlon = lon2 - lon1
-
     a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
     c = 2 * math.asin(math.sqrt(a))
-
     return R * c
 
-
-# ─────────────────────────────────────────────
-# 2. NEAREST NEIGHBOR - đọc thẳng từ DB
-# ─────────────────────────────────────────────
-def solve_routes_from_db():
+def get_osrm_distance_matrix(locations):
     """
-    [DSS Engine] Đọc Location từ SQLite, chạy thuật toán Nearest Neighbor.
-
-    Trả về dict chứa:
-      - 'ordered_locations': list object Location theo thứ tự đi tối ưu
-      - 'segments': list dict mô tả từng chặng (from, to, haversine_km)
-      - 'total_haversine_km': tổng km (đường thẳng) để ước lượng sơ bộ
-      - 'error': chuỗi lỗi nếu không đủ dữ liệu
+    Gọi OSRM Table API để lấy ma trận khoảng cách đường bộ.
+    Trả về dict hai chiều: matrix[loc1.id][loc2.id] = khoảng cách (km).
+    Nếu lỗi, fallback về Haversine.
     """
-    # Tự động seed 3 điểm mẫu nếu DB trống (khởi chạy lần đầu)
-    _seed_sample_data()
+    matrix = {}
+    
+    # Chuẩn bị chuỗi toạ độ cho OSRM (lon,lat)
+    coords_str = ";".join([f"{loc.longitude},{loc.latitude}" for loc in locations])
+    url = f"http://router.project-osrm.org/table/v1/driving/{coords_str}?annotations=distance"
+    
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'DSS-Logistics/1.0 (Student Project)'})
+        response = urllib.request.urlopen(req, timeout=5)
+        res = json.loads(response.read().decode())
+        
+        if res.get("code") == "Ok" and "distances" in res:
+            distances = res["distances"]
+            for i, loc_from in enumerate(locations):
+                matrix[loc_from.id] = {}
+                for j, loc_to in enumerate(locations):
+                    matrix[loc_from.id][loc_to.id] = float(distances[i][j]) / 1000.0
+            return matrix, True
+    except Exception as e:
+        print("Lỗi gọi OSRM Table API, dùng Haversine:", e)
+        
+    for loc_from in locations:
+        matrix[loc_from.id] = {}
+        for loc_to in locations:
+            matrix[loc_from.id][loc_to.id] = haversine(loc_from, loc_to)
+            
+    return matrix, False
 
-    depot = Location.objects.filter(is_depot=True).first()
-    customers = list(Location.objects.filter(is_depot=False))
-
-    # Kiểm tra dữ liệu đầu vào
-    if not depot:
-        return {'error': 'Chưa có Kho xuất phát (Depot). Vui lòng thêm 1 điểm và tick "Là Kho".'}
-    if len(customers) < 1:
-        return {'error': 'Cần ít nhất 1 điểm Khách hàng để tính tuyến đường.'}
-
-    # ── Nearest Neighbor ─────────────────────
-    unvisited = list(customers)      # Tập chưa ghé thăm
-    current   = depot                # Điểm đang đứng
-    ordered   = [depot]              # Kết quả thứ tự đi
-    total_km  = 0.0
-
-    while unvisited:
-        nearest  = None
-        min_dist = float('inf')
-        for loc in unvisited:
-            d = haversine(current, loc)
-            if d < min_dist:
-                min_dist = d
-                nearest  = loc
-
-        ordered.append(nearest)
-        total_km += min_dist
-        current   = nearest
-        unvisited.remove(nearest)
-
-    # Quay về Kho
-    return_km = haversine(current, depot)
-    total_km += return_km
-    ordered.append(depot)
-
-    # ── Xây dựng danh sách từng chặng ────────
+def build_segments(route, dist_matrix):
     segments = []
-    for i in range(len(ordered) - 1):
-        a = ordered[i]
-        b = ordered[i + 1]
+    for i in range(len(route) - 1):
+        a = route[i]
+        b = route[i+1]
         segments.append({
             'from_name': a.name,
             'to_name':   b.name,
@@ -113,65 +82,83 @@ def solve_routes_from_db():
             'from_lng':  a.longitude,
             'to_lat':    b.latitude,
             'to_lng':    b.longitude,
-            'haversine_km': round(haversine(a, b), 3),
+            'km': round(dist_matrix[a.id][b.id], 3),
         })
+    return segments
 
-    # ── Khuyến nghị DSS ──────────────────────
-    n_points = len(customers)
-    if n_points <= 3:
-        recommendation = (
-            f"Tuyến {n_points} điểm ngắn, thuật toán Nearest Neighbor cho kết quả rất tốt. "
-            "KHUYẾN NGHỊ: Áp dụng ngay tuyến đề xuất."
-        )
-    elif n_points <= 8:
-        recommendation = (
-            f"{n_points} điểm giao hàng — Nearest Neighbor đưa ra lời giải hợp lý. "
-            "KHUYẾN NGHỊ: Xem xét tuyến đề xuất trước khi phê duyệt."
-        )
-    else:
-        recommendation = (
-            f"Có {n_points} điểm — với số lượng lớn, Nearest Neighbor có thể chưa tối ưu ~15%. "
-            "KHUYẾN NGHỊ: Cân nhắc dùng thuật toán nâng cao hơn (VD: 2-opt) cho bài toán thực tế."
-        )
+def solve_routes_from_db():
+    _seed_sample_data()
+
+    depot = Location.objects.filter(is_depot=True).first()
+    customers = list(Location.objects.filter(is_depot=False))
+
+    if not depot:
+        return {'error': 'Chưa có Kho xuất phát (Depot). Vui lòng thêm 1 điểm và tick "Là Kho".'}
+    if len(customers) < 1:
+        return {'error': 'Cần ít nhất 1 điểm Khách hàng để tính tuyến đường.'}
+
+    all_locations = [depot] + customers
+    dist_matrix, used_osrm = get_osrm_distance_matrix(all_locations)
+    
+    # ── 1. Nearest Neighbor ──
+    unvisited = list(customers)
+    current = depot
+    route_nn = [depot]
+    dist_nn = 0.0
+    while unvisited:
+        nearest = None
+        min_dist = float('inf')
+        for loc in unvisited:
+            d = dist_matrix[current.id][loc.id]
+            if d < min_dist:
+                min_dist = d
+                nearest = loc
+        route_nn.append(nearest)
+        dist_nn += min_dist
+        current = nearest
+        unvisited.remove(nearest)
+    dist_nn += dist_matrix[current.id][depot.id]
+    route_nn.append(depot)
+    
+    # ── 2. 2-opt ──
+    dist_2opt, route_2opt = solve_tsp_2opt(route_nn, dist_matrix)
+    
+    # ── 3. GA ──
+    dist_ga, route_ga = solve_tsp_ga(depot, customers, dist_matrix, pop_size=50, generations=100)
+    
+    # ── 4. ACO ──
+    dist_aco, route_aco = solve_tsp_aco(depot, customers, dist_matrix, num_ants=15, iterations=60)
+    
+    results = {
+        'NN': {
+            'route': route_nn,
+            'segments': build_segments(route_nn, dist_matrix),
+            'total_km': round(dist_nn, 2)
+        },
+        '2-opt': {
+            'route': route_2opt,
+            'segments': build_segments(route_2opt, dist_matrix),
+            'total_km': round(dist_2opt, 2)
+        },
+        'GA': {
+            'route': route_ga,
+            'segments': build_segments(route_ga, dist_matrix),
+            'total_km': round(dist_ga, 2)
+        },
+        'ACO': {
+            'route': route_aco,
+            'segments': build_segments(route_aco, dist_matrix),
+            'total_km': round(dist_aco, 2)
+        }
+    }
+    
+    best_algo = min(results.keys(), key=lambda k: results[k]['total_km'])
+    results[best_algo]['is_best'] = True
 
     return {
         'error': None,
-        'ordered_locations': ordered,
-        'segments': segments,
-        'total_haversine_km': round(total_km, 2),
-        'n_customers': n_points,
-        'recommendation': recommendation,
-        'all_options': _get_all_route_options(depot, customers) if n_points <= 5 else None
+        'algorithms': results,
+        'n_customers': len(customers),
+        'best_algo': best_algo,
+        'used_osrm': used_osrm
     }
-
-
-def _get_all_route_options(depot, customers):
-    """
-    [DSS Comparison] Liệt kê tất cả các hoán vị điểm giao (n!)
-    và tính tổng chi phí để so sánh. Chỉ thực hiện khi n nhỏ (n <= 5).
-    """
-    n = len(customers)
-    all_perms = list(itertools.permutations(customers))
-    options = []
-
-    for perm in all_perms:
-        route = [depot] + list(perm) + [depot]
-        dist = 0.0
-        for i in range(len(route) - 1):
-            dist += haversine(route[i], route[i+1])
-        
-        # Tạo chuỗi mô tả lộ trình: Kho -> A -> B -> Kho
-        route_str = " → ".join([loc.name for loc in route])
-        
-        # Danh sách tọa độ cho OSRM request
-        coords = [{"lat": loc.latitude, "lng": loc.longitude} for loc in route]
-
-        options.append({
-            'route_str': route_str,
-            'total_km': round(dist, 2),
-            'coords': coords
-        })
-
-    # Sắp xếp theo khoảng cách tăng dần để thấy phương án tốt nhất ở đầu
-    options.sort(key=lambda x: x['total_km'])
-    return options

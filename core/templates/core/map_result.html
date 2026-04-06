@@ -19,88 +19,92 @@
         margin-bottom: 20px;
     }
 
-    /* ALERT DSS */
-    .dss-alert {
-        padding: 16px 20px;
-        border-radius: 8px;
+    /* BẢNG SO SÁNH THUẬT TOÁN */
+    .compare-grid {
+        display: flex;
+        gap: 15px;
         margin-bottom: 25px;
-        font-size: 1rem;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        flex-wrap: wrap;
     }
 
-    .dss-alert.recommend {
-        background: #d4edda;
-        color: #155724;
-        border-left: 6px solid #28a745;
+    .algo-card {
+        background: var(--white);
+        border-radius: 8px;
+        padding: 15px;
+        flex: 1;
+        min-width: 200px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+        border-top: 4px solid #ccced0; /* Default border */
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        position: relative;
+    }
+    
+    .algo-card.active {
+        box-shadow: 0 4px 12px rgba(62, 132, 228, 0.4);
+        border-top: 4px solid var(--accent);
+        background: #f4f9fc;
     }
 
-    .dss-alert.caution {
-        background: #fff3cd;
-        color: #856404;
-        border-left: 6px solid #ffc107;
+    .algo-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .algo-card .best-badge {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: #e74c3c;
+        color: white;
+        font-size: 0.7rem;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
 
-    .dss-alert.error-state {
-        background: #f8d7da;
-        color: #721c24;
-        border-left: 6px solid #dc3545;
+    .algo-card .algo-name {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: var(--primary);
+        margin-bottom: 5px;
+    }
+
+    .algo-card .algo-dist {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: #27ae60;
     }
 
     /* BẢN ĐỒ KẾT QUẢ */
+    .map-container {
+        position: relative;
+    }
+
     #result-map {
         width: 100%;
-        height: 500px;
+        height: 550px;
         border-radius: 10px;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
         margin-bottom: 30px;
         border: 2px solid var(--border);
     }
 
-    /* LOADING INDICATOR */
     #loading-bar {
-        background: #eaf4ff;
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
         border: 1px solid #b3d7f5;
-        border-radius: 6px;
-        padding: 12px 16px;
+        border-radius: 20px;
+        padding: 10px 20px;
         color: #1a6fa8;
-        margin-bottom: 15px;
         font-size: 0.95rem;
         display: none;
-    }
-
-    /* BẢNG TÓM TẮT */
-    .summary-grid {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
-    }
-
-    .summary-card {
-        background: var(--white);
-        border-radius: 8px;
-        padding: 18px 22px;
-        flex: 1;
-        min-width: 140px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
-        text-align: center;
-        border-top: 4px solid var(--accent);
-    }
-
-    .summary-card.depot-card {
-        border-top-color: #2c3e50;
-    }
-
-    .summary-card .card-value {
-        font-size: 1.9rem;
-        font-weight: bold;
-        color: var(--primary);
-        display: block;
-    }
-
-    .summary-card .card-label {
-        font-size: 0.85rem;
-        color: #777;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
     /* BẢNG TỪNG CHẶNG */
@@ -167,316 +171,240 @@
         transition: background 0.2s;
     }
 
-    .btn-primary {
-        background: var(--accent);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: #2980b9;
-    }
-
-    .btn-secondary {
-        background: var(--secondary);
-        color: white;
-    }
-
-    .btn-secondary:hover {
-        background: var(--primary);
-    }
-
-    /* ROAD distance badge (OSRM) */
-    .road-dist {
-        color: #27ae60;
-        font-weight: bold;
-    }
-
-    .road-loading {
-        color: #999;
-        font-size: 0.85em;
-    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #2980b9; }
+    .btn-secondary { background: var(--secondary); color: white; }
+    .btn-secondary:hover { background: var(--primary); }
 </style>
 
 <h1 class="result-title">Kết Quả Tối Ưu Hóa Tuyến Đường</h1>
-<p class="result-subtitle">Thuật toán Nearest Neighbor · Bản đồ đường bộ thực tế (OSRM)</p>
+<p class="result-subtitle">
+    So sánh song song 4 Thuật Toán · Bản đồ đường bộ thực tế (OSRM)
+    {% if result.used_osrm %}
+    <span style="color: #27ae60; font-weight:bold;">(✔ Dữ liệu đường bộ đã tải)</span>
+    {% else %}
+    <span style="color: #e74c3c; font-weight:bold;">(⚠ Dùng đường chim bay do lỗi mạng)</span>
+    {% endif %}
+</p>
 
 {% if result.error %}
-<!-- ─── TRƯỜNG HỢP LỖI ──────────────────────────── -->
-<div class="dss-alert error-state">
+<div style="background: #f8d7da; padding: 20px; border-radius: 8px; color: #721c24;">
     ⚠️ <strong>Không thể tính toán:</strong> {{ result.error }}
 </div>
-<div class="action-bar">
+<div class="action-bar" style="margin-top: 20px;">
     <a href="{% url 'manage_locations' %}" class="btn-action btn-primary">➕ Quản lý Địa điểm</a>
 </div>
 
 {% else %}
-<!-- ─── DSS KHUYẾN NGHỊ ────────────────────────── -->
-{% if result.n_customers <= 8 %} <div class="dss-alert recommend">
-    💡 <strong>Khuyến nghị DSS:</strong> {{ result.recommendation }}
-    </div>
-    {% else %}
-    <div class="dss-alert caution">
-        ⚡ <strong>Khuyến nghị DSS:</strong> {{ result.recommendation }}
-    </div>
-    {% endif %}
 
-    <!-- ─── NÚT HÀNH ĐỘNG ──────────────────────────── -->
-    <div class="action-bar">
-        <a href="{% url 'map_result' %}" class="btn-action btn-primary">🔄 Tính lại</a>
-        <a href="{% url 'manage_locations' %}" class="btn-action btn-secondary">📍 Sửa địa điểm</a>
-    </div>
+<div class="action-bar">
+    <a href="{% url 'map_result' %}" class="btn-action btn-primary">🔄 Tính lại / Chạy lại</a>
+    <a href="{% url 'manage_locations' %}" class="btn-action btn-secondary">📍 Sửa địa điểm ({{ result.n_customers }} Khách hàng)</a>
+</div>
 
-    <!-- ─── TÓM TẮT SỐ LIỆU ──────────────────────── -->
-    <div class="summary-grid">
-        <div class="summary-card depot-card">
-            <span class="card-value">{{ result.n_customers }}</span>
-            <span class="card-label">Điểm Giao Hàng</span>
-        </div>
-        <div class="summary-card">
-            <span class="card-value">{{ result.n_customers|add:2 }}</span>
-            <span class="card-label">Tổng Trạm Dừng<br>(gồm về Kho)</span>
-        </div>
-        <div class="summary-card">
-            <span class="card-value">{{ result.total_haversine_km }}</span>
-            <span class="card-label">Tổng Km Đường bộ<br>(OSRM)</span>
-        </div>
-    </div>
-
-    <!-- ─── BẢN ĐỒ ────────────────────────────────── -->
-    <div id="loading-bar" id="osrm-loading">
-        ⏳ Đang tải đường bộ thực tế từ OSRM để vẽ lên bản đồ...
-    </div>
-    <div id="result-map"></div>
-
-    <!-- ─── BẢNG TỪNG CHẶNG ──────────────────────── -->
-    <h2 class="section-title">Chi Tiết Từng Chặng</h2>
-    <div class="segments-table-wrap">
-        <table class="segments-table" id="segments-table">
-            <thead>
-                <tr>
-                    <th>Chặng</th>
-                    <th>Từ điểm</th>
-                    <th>→ Đến điểm</th>
-                    <th>Khoảng cách (Đường bộ OSRM)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for seg in result.segments %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>
-                        {% if forloop.first %}🏭 {% endif %}
-                        {% if forloop.last %}🔙 {% endif %}
-                        {{ seg.from_name }}
-                    </td>
-                    <td>{{ seg.to_name }}</td>
-                    <td>{{ seg.haversine_km }} km</td>
-                </tr>
-                {% endfor %}
-                <!-- Dòng tổng -->
-                <tr>
-                    <td colspan="3"><strong>TỔNG CỘNG</strong></td>
-                    <td><strong>{{ result.total_haversine_km }} km</strong></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    </div>
-
-    <!-- ─── BẢNG SO SÁNH PHƯƠNG ÁN (DSS) ──────────────── -->
-    {% if result.all_options %}
-    <h2 class="section-title" style="margin-top: 40px; border-left-color: #f39c12;">
-        Phân Tích & So Sánh Tất Cả Phương Án (DSS)
-    </h2>
-    <div class="map-hint" style="background: #fff9eb; border: 1px solid #ffeeba; color: #856404; margin-bottom: 15px;">
-        🔍 <strong>Hệ thống đề giúp ra quyết định:</strong> Dưới đây là danh sách tất cả các hoán vị đường đi có thể có.
-        Hệ thống đã tự động tính toán tổng <strong>khoảng cách đường bộ</strong> cho từng trường hợp dựa trên API của
-        OSRM và chọn ra phương án <strong>ngắn nhất</strong> để hiển thị trên bản đồ.
-    </div>
-
-    <div class="segments-table-wrap" style="border-top: 4px solid #f39c12;">
-        <table class="segments-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Lộ trình (Thứ tự các điểm)</th>
-                    <th>Tổng Km (Đường bộ)</th>
-                    <th>Trạng thái</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for opt in result.all_options %}
-                <tr {% if forloop.first %}style="background: #eafaf1; font-weight: bold;" {% endif %}>
-                    <td>{{ forloop.counter }}</td>
-                    <td><small>{{ opt.route_str }}</small></td>
-                    <td>{{ opt.total_km }} km</td>
-                    <td>
-                        {% if forloop.first %}
-                        <span style="color: #27ae60;">● Tối ưu nhất</span>
-                        {% else %}
-                        <span style="color: #999;">Kém hơn</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    {% if not result.error %}
-
-    {% endif %}
-    {% endif %}
-    {% endif %}
-
-    <script type="application/json" id="map-data">
-    {
-        "orderedLocations": [
-            {% for loc in result.ordered_locations %}
-            {"name": "{{ loc.name|escapejs }}", "lat": {{ loc.latitude }}, "lng": {{ loc.longitude }}, "isDepot": {{ loc.is_depot|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ],
-        "segments": [
-            {% for seg in result.segments %}
-            {"fromName": "{{ seg.from_name|escapejs }}", "toName": "{{ seg.to_name|escapejs }}", "fromLat": {{ seg.from_lat }}, "fromLng": {{ seg.from_lng }}, "toLat": {{ seg.to_lat }}, "toLng": {{ seg.to_lng }}, "heuristic": {{ seg.haversine_km }}}{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ]{% if result.all_options %},
-        "allOptions": [
-            {% for opt in result.all_options %}
-            {"id": {{ forloop.counter0 }}, "coords": [{% for c in opt.coords %}{"lat": {{ c.lat }}, "lng": {{ c.lng }}}{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ]{% endif %}
-    }
-    </script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        {% if not result.error %}
-        var _d = JSON.parse(document.getElementById('map-data').textContent);
-        var orderedLocations = _d.orderedLocations;
-        var segments = _d.segments;
-        var allOptions = _d.allOptions || null;
-
-        // ── KHỞI TẠO BẢN ĐỒ ─────────────────────────────────────────────
-        var map = L.map('result-map');
-        // Dùng CARTO tile - hoạt động tốt từ localhost, không yêu cầu Referer header
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '© <a href="https://carto.com/">CARTO</a> | © <a href="https://www.openstreetmap.org">OpenStreetMap</a>',
-            subdomains: 'abcd',
-            maxZoom: 19
-        }).addTo(map);
-
-        // ── ICON ─────────────────────────────────────────────────────────
-        var depotIcon = L.divIcon({
-            html: '<div style="background:#2c3e50;color:white;border-radius:50%;width:34px;height:34px;line-height:34px;text-align:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.5)">🏭</div>',
-            className: '', iconSize: [34, 34], iconAnchor: [17, 17]
-        });
-        var customerIcon = L.divIcon({
-            html: '<div style="background:#3498db;color:white;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-size:15px;box-shadow:0 2px 5px rgba(0,0,0,0.4)">📦</div>',
-            className: '', iconSize: [30, 30], iconAnchor: [15, 15]
-        });
-
-        // ── VẼ MARKER CHO TỪNG ĐIỂM ──────────────────────────────────────
-        var allBounds = [];
-        // Bỏ điểm cuối (Depot lặp lại)
-        var uniqueLocations = orderedLocations.slice(0, orderedLocations.length - 1);
-
-        uniqueLocations.forEach(function (loc, idx) {
-            var icon = loc.isDepot ? depotIcon : customerIcon;
-            var label = loc.isDepot ? '' : ('<b>Trạm ' + idx + '</b><br>');
-            var marker = L.marker([loc.lat, loc.lng], { icon: icon });
-            marker.bindPopup(label + loc.name + '<br><small>' + loc.lat.toFixed(5) + ', ' + loc.lng.toFixed(5) + '</small>');
-            marker.addTo(map);
-            allBounds.push([loc.lat, loc.lng]);
-        });
-
-        // Fit bản đồ
-        if (allBounds.length > 0) {
-            map.fitBounds(allBounds, { padding: [40, 40] });
-        }
-
-        // ── GỌI OSRM LẤY ĐƯỜNG BỘ (async/await + L.geoJSON) ────────────────
-        var OSRM_BASE = 'https://router.project-osrm.org/route/v1/driving/';
-
-        // Lưu các layer route để có thể xóa khi cần
-        var routeLayers = [];
-
-        function clearRoutes() {
-            routeLayers.forEach(function (layer) { map.removeLayer(layer); });
-            routeLayers = [];
-        }
-
-        async function fetchOsrmSegment(seg, idx) {
-            // ⚠️ Thứ tự OSRM: lng,lat (KHÔNG phải lat,lng)
-            var coords = seg.fromLng + ',' + seg.fromLat + ';' + seg.toLng + ',' + seg.toLat;
-            var url = OSRM_BASE + coords + '?overview=full&geometries=geojson';
-
-            try {
-                var res = await fetch(url);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                var data = await res.json();
-
-                if (data.routes && data.routes.length > 0) {
-                    var route = data.routes[0];
-                    var distKm = (route.distance / 1000).toFixed(2);
-
-                    // ✅ Vẽ bằng L.geoJSON — bám theo đường bộ thực tế
-                    var layer = L.geoJSON(route.geometry, {
-                        style: {
-                            color: 'blue',
-                            weight: 5,
-                            opacity: 0.85
-                        }
-                    }).addTo(map);
-                    routeLayers.push(layer);
-
-                    // Cập nhật ô bảng
-                    var cell = document.getElementById('road-' + idx);
-                    if (cell) cell.innerHTML = '<span class="road-dist">' + distKm + ' km</span>';
-
-                    return parseFloat(distKm);
-                }
-            } catch (err) {
-                console.warn('OSRM lỗi chặng ' + idx + ':', err);
-
-                // Dự phòng: vẽ đường thẳng màu đỏ đứt nét
-                var fallback = L.polyline(
-                    [[seg.fromLat, seg.fromLng], [seg.toLat, seg.toLng]],
-                    { color: '#e74c3c', weight: 3, opacity: 0.7, dashArray: '8 6' }
-                ).addTo(map);
-                routeLayers.push(fallback);
-
-                var cell = document.getElementById('road-' + idx);
-                if (cell) cell.innerHTML = '~' + seg.heuristic + ' km <small style="color:#e74c3c">(đường thẳng)</small>';
-            }
-            return 0;
-        }
-
-        async function drawAllRoutes() {
-            // Xóa route cũ trước khi vẽ mới
-            clearRoutes();
-
-            document.getElementById('loading-bar').style.display = 'block';
-
-            var totalKm = 0;
-
-            // Lặp tuần tự từng chặng (tránh spam OSRM)
-            for (var i = 0; i < segments.length; i++) {
-                var km = await fetchOsrmSegment(segments[i], i);
-                totalKm += km;
-            }
-
-            document.getElementById('loading-bar').style.display = 'none';
-
-            // Hiển thị tổng km
-            var totalStr = totalKm.toFixed(2) + ' km';
-            var elSummary = document.getElementById('total-road-km');
-            var elTable = document.getElementById('total-road-km-table');
-            if (elSummary) elSummary.textContent = totalStr;
-            if (elTable) elTable.textContent = totalStr;
-        }
-
-        // Khởi chạy vẽ đường bộ
-        drawAllRoutes();
+<!-- ─── BẢNG TÓM TẮT SO SÁNH ──────────────────────── -->
+<h2 class="section-title">So sánh 4 Thuật Toán (Click để xem bản đồ)</h2>
+<div class="compare-grid">
+    {% for algo_key, data in result.algorithms.items %}
+    <div class="algo-card {% if algo_key == 'NN' %}active{% endif %}" id="card-{{ algo_key }}" onclick="switchAlgorithm('{{ algo_key }}')">
+        {% if data.is_best %}
+        <div class="best-badge">TỐT NHẤT</div>
         {% endif %}
-    </script>
-    {% endblock %}
+        <div class="algo-name">
+            {% if algo_key == 'NN' %} Nearest Neighbor
+            {% elif algo_key == '2-opt' %} 2-Opt Local Search
+            {% elif algo_key == 'GA' %} Genetic Algorithm
+            {% elif algo_key == 'ACO' %} Ant Colony
+            {% endif %}
+        </div>
+        <div class="algo-dist">{{ data.total_km }} km</div>
+        <div style="font-size: 0.8rem; color: #777;">(OSRM Road Distance)</div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ─── BẢN ĐỒ ────────────────────────────────── -->
+<div class="map-container">
+    <div id="loading-bar">⏳ Đang vẽ chi tiết bản đồ đường bộ...</div>
+    <div id="result-map"></div>
+</div>
+
+<!-- ─── BẢNG TỪNG CHẶNG CỦA THUẬT TOÁN ĐANG CHỌN ──────────────────────── -->
+<h2 class="section-title">Chi Tiết Từng Chặng: <span id="current-algo-title" style="color:var(--accent);">Nearest Neighbor</span></h2>
+<div id="route-summary" style="background:#fff9eb; border:1px solid #ffeeba; color:#856404; padding:12px 18px; border-radius:6px; margin-bottom:15px; font-weight:500; font-size:1.05rem;">
+    <!-- Route string injected here via JS -->
+</div>
+<div class="segments-table-wrap">
+    <table class="segments-table" id="segments-table">
+        <thead>
+            <tr>
+                <th>Chặng</th>
+                <th>Từ điểm</th>
+                <th>→ Đến điểm</th>
+                <th>Khoảng cách (Đường bộ)</th>
+            </tr>
+        </thead>
+        <tbody id="segments-tbody">
+            <!-- Render via JS -->
+        </tbody>
+    </table>
+</div>
+
+{% endif %}
+
+<script type="application/json" id="map-data">
+{% if not result.error %}
+{
+    "algorithms": {
+        {% for algo_key, data in result.algorithms.items %}
+        "{{ algo_key }}": {
+            "total_km": {{ data.total_km }},
+            "route": [
+                {% for loc in data.route %}
+                {"name": "{{ loc.name|escapejs }}", "lat": {{ loc.latitude }}, "lng": {{ loc.longitude }}, "isDepot": {{ loc.is_depot|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            "segments": [
+                {% for seg in data.segments %}
+                {"fromName": "{{ seg.from_name|escapejs }}", "toName": "{{ seg.to_name|escapejs }}", "fromLat": {{ seg.from_lat }}, "fromLng": {{ seg.from_lng }}, "toLat": {{ seg.to_lat }}, "toLng": {{ seg.to_lng }}, "km": {{ seg.km }} }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    }
+}
+{% else %}
+{}
+{% endif %}
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    {% if not result.error %}
+    var _d = JSON.parse(document.getElementById('map-data').textContent);
+    var algorithmsData = _d.algorithms;
+    var currentAlgo = 'NN';
+
+    // ── KHỞI TẠO BẢN ĐỒ ─────────────────────────────────────────────
+    var map = L.map('result-map');
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '© CARTO | © OpenStreetMap',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+
+    var depotIcon = L.divIcon({
+        html: '<div style="background:#2c3e50;color:white;border-radius:50%;width:34px;height:34px;line-height:34px;text-align:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.5)">🏭</div>',
+        className: '', iconSize: [34, 34], iconAnchor: [17, 17]
+    });
+    var customerIcon = L.divIcon({
+        html: '<div style="background:#3498db;color:white;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-size:15px;box-shadow:0 2px 5px rgba(0,0,0,0.4)">📦</div>',
+        className: '', iconSize: [30, 30], iconAnchor: [15, 15]
+    });
+
+    var mapLayers = [];
+
+    async function fetchFullOsrmRoute(routeCoords, layerGroup) {
+        if (routeCoords.length < 2) return;
+        
+        // Chuỗi tọa độ cho OSRM (lon,lat;lon,lat...)
+        var coordsStr = routeCoords.map(loc => loc.lng + ',' + loc.lat).join(';');
+        var url = 'https://router.project-osrm.org/route/v1/driving/' + coordsStr + '?overview=full&geometries=geojson';
+
+        try {
+            var res = await fetch(url);
+            if(res.ok) {
+                var data = await res.json();
+                if(data.routes && data.routes.length > 0) {
+                    var poly = L.geoJSON(data.routes[0].geometry, {
+                        style: { color: '#3498db', weight: 5, opacity: 0.8 }
+                    }).addTo(map);
+                    layerGroup.push(poly);
+                    return;
+                }
+            }
+        } catch(e) { }
+
+        // Fallback đường thẳng đỏ nếu OSRM lỗi
+        for (let i = 0; i < routeCoords.length - 1; i++) {
+            var fb = L.polyline([
+                [routeCoords[i].lat, routeCoords[i].lng], 
+                [routeCoords[i+1].lat, routeCoords[i+1].lng]
+            ], {
+                color: '#e74c3c', weight: 3, dashArray: '6 6'
+            }).addTo(map);
+            layerGroup.push(fb);
+        }
+    }
+
+    async function drawAlgorithm(algoKey) {
+        var data = algorithmsData[algoKey];
+        if(!data) return;
+
+        // Cập nhật UI Card & Title
+        document.querySelectorAll('.algo-card').forEach(el => el.classList.remove('active'));
+        var activeCard = document.getElementById('card-' + algoKey);
+        if(activeCard) activeCard.classList.add('active');
+        
+        var nameMap = {'NN':'Nearest Neighbor', '2-opt':'2-Opt Local Search', 'GA':'Genetic Algorithm', 'ACO':'Ant Colony Optimization'};
+        document.getElementById('current-algo-title').innerText = nameMap[algoKey];
+
+        // Tạo chuỗi Lộ trình
+        var routeNames = data.route.map(loc => loc.name);
+        document.getElementById('route-summary').innerHTML = '<strong>Lộ trình:</strong> ' + routeNames.join(' ➔ ');
+
+        // 1. Cập nhật Bảng
+        var tbody = document.getElementById('segments-tbody');
+        tbody.innerHTML = '';
+        data.segments.forEach((seg, idx) => {
+            var tr = document.createElement('tr');
+            var prefix = (idx === 0) ? '🏭 ' : ((idx === data.segments.length - 1) ? '🔙 ' : '');
+            tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td>${prefix}${seg.fromName}</td>
+                <td>${seg.toName}</td>
+                <td style="color:#27ae60;font-weight:bold;">${seg.km.toFixed(2)} km</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        var trTotal = document.createElement('tr');
+        trTotal.innerHTML = `<td colspan="3"><strong>TỔNG CỘNG</strong></td><td style="font-size:1.1rem;color:var(--primary);">${data.total_km.toFixed(2)} km</td>`;
+        tbody.appendChild(trTotal);
+
+        // 2. Vẽ Bản Đồ
+        mapLayers.forEach(l => map.removeLayer(l));
+        mapLayers = [];
+
+        var bounds = [];
+        // Vẽ markers (trừ kho lặp lại ở cuối)
+        for(let i=0; i<data.route.length - 1; i++) {
+            let loc = data.route[i];
+            let m = L.marker([loc.lat, loc.lng], {icon: loc.isDepot ? depotIcon : customerIcon});
+            m.bindPopup("<b>" + (loc.isDepot ? "Kho" : "Trạm " + i) + "</b><br>" + loc.name).addTo(map);
+            mapLayers.push(m);
+            bounds.push([loc.lat, loc.lng]);
+        }
+        
+        if(bounds.length > 0) {
+            map.fitBounds(bounds, {padding: [50, 50]});
+        }
+
+        // Hiện loading và quét vẽ OSRM bằng 1 request duy nhất
+        document.getElementById('loading-bar').style.display = 'block';
+        await fetchFullOsrmRoute(data.route, mapLayers);
+        document.getElementById('loading-bar').style.display = 'none';
+    }
+
+    function switchAlgorithm(algoKey) {
+        if(algoKey === currentAlgo) return;
+        currentAlgo = algoKey;
+        drawAlgorithm(algoKey);
+    }
+
+    // Khởi tạo thuật toán ban đầu (NN)
+    drawAlgorithm('NN');
+
+    {% endif %}
+</script>
+{% endblock %}
