@@ -73,6 +73,7 @@ def solve_tsp_2opt(route, dist_matrix, runs=10):
     """
     overall_best_route = None
     overall_best_dist = float('inf')
+    logs = []
 
     def calculate_route_distance(r):
         dist = 0.0
@@ -113,7 +114,14 @@ def solve_tsp_2opt(route, dist_matrix, runs=10):
             overall_best_dist = best_dist
             overall_best_route = best_route
             
-    return overall_best_dist, overall_best_route
+        logs.append({
+            'Algorithm': '2-opt',
+            'Run': run_idx + 1,
+            'Distance': best_dist,
+            'Path': "->".join(str(loc.name) for loc in best_route)
+        })
+            
+    return overall_best_dist, overall_best_route, logs
 
 def solve_tsp_ga(depot, customers, dist_matrix, pop_size=50, generations=100, mutation_rate=0.1, runs=10):
     """
@@ -136,6 +144,7 @@ def solve_tsp_ga(depot, customers, dist_matrix, pop_size=50, generations=100, mu
 
     overall_best_route = None
     overall_best_dist = float('inf')
+    logs = []
 
     for run_idx in range(runs):
         # Khởi tạo quần thể ngẫu nhiên
@@ -186,7 +195,14 @@ def solve_tsp_ga(depot, customers, dist_matrix, pop_size=50, generations=100, mu
             overall_best_dist = best_dist
             overall_best_route = best_route
             
-    return overall_best_dist, overall_best_route
+        logs.append({
+            'Algorithm': 'GA',
+            'Run': run_idx + 1,
+            'Distance': best_dist,
+            'Path': "->".join(str(loc.name) for loc in best_route)
+        })
+            
+    return overall_best_dist, overall_best_route, logs
 
 def solve_tsp_aco(depot, customers, dist_matrix, num_ants=10, iterations=50, alpha=1.0, beta=2.0, evaporation_rate=0.5, Q=100.0, runs=10):
     """
@@ -205,6 +221,7 @@ def solve_tsp_aco(depot, customers, dist_matrix, num_ants=10, iterations=50, alp
 
     overall_best_route = None
     overall_best_dist = float('inf')
+    logs = []
 
     for run_idx in range(runs):
         # Khởi tạo lại ma trận pheromone cho mỗi lần chạy
@@ -286,4 +303,11 @@ def solve_tsp_aco(depot, customers, dist_matrix, num_ants=10, iterations=50, alp
             overall_best_dist = best_dist
             overall_best_route = best_route
             
-    return overall_best_dist, overall_best_route
+        logs.append({
+            'Algorithm': 'ACO',
+            'Run': run_idx + 1,
+            'Distance': best_dist,
+            'Path': "->".join(str(loc.name) for loc in best_route) if best_route else ""
+        })
+            
+    return overall_best_dist, overall_best_route, logs

@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.http import FileResponse, Http404
 from .utils.dss_csv import dss_engine_analyze
 from .utils.tsp_db import solve_routes_from_db
 from .models import Location
@@ -174,3 +175,12 @@ def map_result(request):
     """
     result = solve_routes_from_db()
     return render(request, 'core/map_result.html', {'result': result})
+
+def download_tsp_results(request):
+    """Tải xuống file kết quả thực nghiệm TSP."""
+    excel_path = os.path.join(settings.BASE_DIR, 'tsp_results.xlsx')
+    if os.path.exists(excel_path):
+        return FileResponse(open(excel_path, 'rb'), as_attachment=True, filename='tsp_results.xlsx')
+    else:
+        messages.error(request, "File chưa được tạo. Vui lòng chạy tính toán lại.")
+        return redirect('map_result')

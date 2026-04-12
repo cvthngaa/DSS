@@ -202,6 +202,14 @@
     <a href="{% url 'manage_locations' %}" class="btn-action btn-secondary">📍 Sửa địa điểm ({{ result.n_customers }} Khách hàng)</a>
 </div>
 
+{% if result.stat_p_value %}
+<div style="background: #e1f5fe; padding: 15px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #03a9f4; color: #0277bd;">
+    <strong>📊 Báo cáo Thống Kê (10 lần chạy giả lập mỗi thuật toán):</strong><br>
+    Kết quả thống kê với định lượng <strong>p = {{ result.stat_p_value|floatformat:4 }}</strong> cho thấy thuật toán <strong>{{ result.stat_best_algo }}</strong> là tốt nhất.
+    <iframe src="{% url 'download_tsp' %}" style="display:none;"></iframe>
+</div>
+{% endif %}
+
 <!-- ─── BẢNG TÓM TẮT SO SÁNH ──────────────────────── -->
 <h2 class="section-title">So sánh 4 Thuật Toán (Click để xem bản đồ)</h2>
 <div class="compare-grid">

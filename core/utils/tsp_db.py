@@ -11,6 +11,10 @@ import json
 import urllib.request
 import urllib.error
 import random
+import os
+import pandas as pd
+import scipy.stats as stats
+from django.conf import settings
 from ..models import Location
 from .tsp_math import solve_tsp_2opt, solve_tsp_ga, solve_tsp_aco
 
@@ -121,13 +125,13 @@ def solve_routes_from_db():
     route_nn.append(depot)
     
     # ── 2. 2-opt ──
-    dist_2opt, route_2opt = solve_tsp_2opt(route_nn, dist_matrix)
+    dist_2opt, route_2opt, logs_2opt = solve_tsp_2opt(route_nn, dist_matrix)
     
     # ── 3. GA ──
-    dist_ga, route_ga = solve_tsp_ga(depot, customers, dist_matrix, pop_size=50, generations=100)
+    dist_ga, route_ga, logs_ga = solve_tsp_ga(depot, customers, dist_matrix, pop_size=50, generations=100)
     
     # ── 4. ACO ──
-    dist_aco, route_aco = solve_tsp_aco(depot, customers, dist_matrix, num_ants=15, iterations=60)
+    dist_aco, route_aco, logs_aco = solve_tsp_aco(depot, customers, dist_matrix, num_ants=15, iterations=60)
     
     results = {
         'NN': {
@@ -155,10 +159,64 @@ def solve_routes_from_db():
     best_algo = min(results.keys(), key=lambda k: results[k]['total_km'])
     results[best_algo]['is_best'] = True
 
+    stat_p_value = None
+    stat_best_algo = None
+
+    # --- Xuất báo cáo Excel ---
+    try:
+        logs_nn = []
+        # Nearest Neighbor deterministic, copy 10 lần
+        path_nn = "->".join(str(loc.name) for loc in route_nn)
+        for i in range(10):
+            logs_nn.append({
+                'Algorithm': 'NN',
+                'Run': i + 1,
+                'Distance': dist_nn,
+                'Path': path_nn
+            })
+            
+        all_logs = logs_nn + logs_2opt + logs_ga + logs_aco
+        df = pd.DataFrame(all_logs)
+        
+        # Thống kê
+        stats_df = df.groupby('Algorithm')['Distance'].agg(['mean', 'std', 'var', 'min']).reset_index()
+        stats_df.rename(columns={'mean': 'Mean', 'std': 'Std', 'var': 'Variance', 'min': 'Best'}, inplace=True)
+        
+        # Xác định thuật toán tốt nhất (Dựa trên Mean và Std)
+        best_algo_stat = stats_df.sort_values(by=['Mean', 'Std']).iloc[0]['Algorithm']
+        
+        # Tính p-value (ANOVA)
+        groups = [df[df['Algorithm'] == algo]['Distance'].values for algo in df['Algorithm'].unique()]
+        if len(groups) > 1:
+            f_stat, p_value = stats.f_oneway(*groups)
+        else:
+            p_value = None
+            
+        test_result = pd.DataFrame([{
+            'Test': 'ANOVA (p-value)',
+            'p-value': p_value,
+            'Best Algorithm (Stat)': best_algo_stat,
+            'Interpretation': 'Thống kê có sự khác biệt' if p_value and p_value < 0.05 else 'Không có sự khác biệt rõ rệt'
+        }])
+        
+        stat_p_value = p_value
+        stat_best_algo = best_algo_stat
+        
+        excel_path = os.path.join(settings.BASE_DIR, 'tsp_results.xlsx')
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Raw_Data', index=False)
+            stats_df.to_excel(writer, sheet_name='Statistics', index=False)
+            test_result.to_excel(writer, sheet_name='Statistical_Test', index=False)
+            
+    except Exception as e:
+        print("Lỗi xuất file Excel:", e)
+
     return {
         'error': None,
         'algorithms': results,
         'n_customers': len(customers),
         'best_algo': best_algo,
-        'used_osrm': used_osrm
+        'used_osrm': used_osrm,
+        'stat_p_value': stat_p_value,
+        'stat_best_algo': stat_best_algo
     }
