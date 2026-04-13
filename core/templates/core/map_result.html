@@ -1,418 +1,320 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <style>
-    .result-title {
-        color: var(--primary);
-        font-size: 1.8rem;
-        margin-bottom: 5px;
-        border-bottom: 2px solid var(--accent);
-        display: inline-block;
-        padding-bottom: 5px;
-    }
+    .result-page { display:grid; grid-template-columns:1fr 280px; gap:20px; align-items:start; }
 
-    .result-subtitle {
-        color: #666;
-        margin-bottom: 20px;
-    }
+    /* Header */
+    .result-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:18px; }
+    .result-title  { font-size:1.35rem; font-weight:700; color:var(--primary); letter-spacing:-.3px; margin-bottom:4px; }
+    .result-meta   { font-size:.74rem; color:var(--text-muted); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-    /* BẢNG SO SÁNH THUẬT TOÁN */
-    .compare-grid {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 25px;
-        flex-wrap: wrap;
+    /* Algo grid */
+    .algo-grid {
+        display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+        margin-bottom:18px; grid-column:1/-1;
     }
-
     .algo-card {
-        background: var(--white);
-        border-radius: 8px;
-        padding: 15px;
-        flex: 1;
-        min-width: 200px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
-        border-top: 4px solid #ccced0; /* Default border */
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-        position: relative;
+        background:var(--card-bg); border-radius:var(--radius);
+        padding:18px; box-shadow:var(--shadow);
+        border:1.5px solid var(--border);
+        cursor:pointer; position:relative; overflow:hidden;
+        transition:transform .22s, box-shadow .22s, border-color .22s;
     }
-    
+    .algo-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-md); }
     .algo-card.active {
-        box-shadow: 0 4px 12px rgba(62, 132, 228, 0.4);
-        border-top: 4px solid var(--accent);
-        background: #f4f9fc;
+        border-color:var(--accent);
+        background:linear-gradient(135deg,#FAFCFF,#EFF6FF);
+        box-shadow:0 4px 20px rgba(59,130,246,.18);
+    }
+    .algo-card.active::after {
+        content:''; position:absolute;
+        top:0; left:0; right:0; height:3px;
+        background:linear-gradient(90deg,var(--accent),var(--accent-2));
+        border-radius:var(--radius) var(--radius) 0 0;
+    }
+    .best-badge {
+        position:absolute; top:10px; right:10px;
+        background:linear-gradient(90deg,#DC2626,#EF4444);
+        color:#fff; font-size:.6rem; font-weight:800;
+        padding:3px 8px; border-radius:20px;
+        letter-spacing:.5px; text-transform:uppercase;
+        box-shadow:0 2px 8px rgba(220,38,38,.3);
+    }
+    .algo-name { font-size:.78rem; font-weight:700; color:var(--primary); margin-bottom:10px; line-height:1.3; }
+    .algo-dist { font-size:1.55rem; font-weight:700; color:#15803D; letter-spacing:-.4px; line-height:1; }
+    .algo-unit { font-size:.67rem; color:var(--text-muted); margin-top:4px; }
+
+    /* Map card */
+    .map-card {
+        background:var(--card-bg); border-radius:var(--radius);
+        box-shadow:var(--shadow-md); border:1px solid rgba(226,232,240,.5);
+        overflow:hidden; margin-bottom:16px; position:relative;
+    }
+    .map-card-header {
+        padding:13px 18px; border-bottom:1px solid var(--border);
+        display:flex; align-items:center; justify-content:space-between;
+    }
+    .map-card-title { font-size:.85rem; font-weight:700; color:var(--primary); }
+    .map-card-title span { color:var(--accent); }
+    #result-map { width:100%; height:410px; display:block; }
+
+    .loading-pill {
+        position:absolute; top:60px; left:50%; transform:translateX(-50%);
+        z-index:1000;
+        background:rgba(255,255,255,.97); border:1px solid #BFDBFE;
+        border-radius:50px; padding:7px 18px;
+        font-size:.8rem; font-weight:600; color:var(--accent);
+        display:none; box-shadow:var(--shadow-md);
+    }
+    .route-bar {
+        padding:10px 18px;
+        background:linear-gradient(135deg,#FFFBEB,#FEF3C7);
+        border-bottom:1px solid #FDE68A;
+        font-size:.78rem; color:#92400E; line-height:1.6;
     }
 
-    .algo-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    /* Segments */
+    .segments-card {
+        background:var(--card-bg); border-radius:var(--radius);
+        box-shadow:var(--shadow); border:1px solid rgba(226,232,240,.5); overflow:hidden;
     }
-    
-    .algo-card .best-badge {
-        position: absolute;
-        top: -10px;
-        right: -10px;
-        background: #e74c3c;
-        color: white;
-        font-size: 0.7rem;
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    .segments-header {
+        padding:13px 18px; border-bottom:1px solid var(--border);
+        display:flex; align-items:center; gap:8px;
     }
 
-    .algo-card .algo-name {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: var(--primary);
-        margin-bottom: 5px;
-    }
+    /* Right panel */
+    .result-right { display:flex; flex-direction:column; gap:14px; }
 
-    .algo-card .algo-dist {
-        font-size: 1.4rem;
-        font-weight: bold;
-        color: #27ae60;
+    /* P-value card */
+    .pval-card {
+        background:var(--card-bg); border-radius:var(--radius);
+        box-shadow:var(--shadow); border:1px solid rgba(226,232,240,.5); padding:18px;
     }
-
-    /* BẢN ĐỒ KẾT QUẢ */
-    .map-container {
-        position: relative;
+    .pval-num {
+        text-align:center; margin:12px 0 4px;
+        font-size:2rem; font-weight:800;
+        background:linear-gradient(90deg,var(--accent),var(--accent-2));
+        -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+        background-clip:text; letter-spacing:-.5px;
     }
+    .pval-label { text-align:center; font-size:.7rem; color:var(--text-muted); margin-bottom:4px; }
 
-    #result-map {
-        width: 100%;
-        height: 550px;
-        border-radius: 10px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-        margin-bottom: 30px;
-        border: 2px solid var(--border);
+    /* Actions card */
+    .actions-card {
+        background:var(--card-bg); border-radius:var(--radius);
+        box-shadow:var(--shadow); border:1px solid rgba(226,232,240,.5);
+        padding:16px; display:flex; flex-direction:column; gap:8px;
     }
-
-    #loading-bar {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1000;
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid #b3d7f5;
-        border-radius: 20px;
-        padding: 10px 20px;
-        color: #1a6fa8;
-        font-size: 0.95rem;
-        display: none;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-
-    /* BẢNG TỪNG CHẶNG */
-    .section-title {
-        font-size: 1.2rem;
-        color: var(--secondary);
-        border-left: 4px solid var(--accent);
-        padding-left: 12px;
-        margin-bottom: 15px;
-    }
-
-    .segments-table-wrap {
-        background: var(--white);
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
-        overflow-x: auto;
-    }
-
-    .segments-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.95rem;
-    }
-
-    .segments-table th {
-        background: var(--primary);
-        color: var(--white);
-        text-align: left;
-        padding: 10px 14px;
-    }
-
-    .segments-table td {
-        padding: 10px 14px;
-        border-bottom: 1px solid #eee;
-    }
-
-    .segments-table tr:hover td {
-        background: #f8f9fa;
-    }
-
-    .segments-table tr:last-child td {
-        border-bottom: none;
-        font-weight: bold;
-        background: #f0f3f4;
-    }
-
-    /* NÚT HÀNH ĐỘNG */
-    .action-bar {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 25px;
-        flex-wrap: wrap;
-    }
-
-    .btn-action {
-        padding: 10px 20px;
-        border-radius: 6px;
-        border: none;
-        font-size: 0.95rem;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-block;
-        transition: background 0.2s;
-    }
-
-    .btn-primary { background: var(--accent); color: white; }
-    .btn-primary:hover { background: #2980b9; }
-    .btn-secondary { background: var(--secondary); color: white; }
-    .btn-secondary:hover { background: var(--primary); }
 </style>
 
-<h1 class="result-title">Kết Quả Tối Ưu Hóa Tuyến Đường</h1>
-<p class="result-subtitle">
-    So sánh song song 4 Thuật Toán · Bản đồ đường bộ thực tế (OSRM)
-    {% if result.used_osrm %}
-    <span style="color: #27ae60; font-weight:bold;">(✔ Dữ liệu đường bộ đã tải)</span>
-    {% else %}
-    <span style="color: #e74c3c; font-weight:bold;">(⚠ Dùng đường chim bay do lỗi mạng)</span>
-    {% endif %}
-</p>
+<!-- Header -->
+<div class="result-header">
+    <div>
+        <div class="result-title">Kết Quả Tối Ưu Hóa Tuyến Đường</div>
+        <div class="result-meta">
+            <span>So sánh song song 4 thuật toán · Bản đồ đường bộ OSRM</span>
+            {% if result.used_osrm %}<span class="badge badge-success">Đường bộ thực tế</span>
+            {% else %}<span class="badge badge-danger">Đường chim bay</span>{% endif %}
+        </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+        <a href="{% url 'manage_locations' %}" class="btn btn-secondary">Địa điểm ({{ result.n_customers }})</a>
+        <a href="{% url 'map_result' %}" class="btn btn-primary">Tính lại</a>
+    </div>
+</div>
 
 {% if result.error %}
-<div style="background: #f8d7da; padding: 20px; border-radius: 8px; color: #721c24;">
-    ⚠️ <strong>Không thể tính toán:</strong> {{ result.error }}
-</div>
-<div class="action-bar" style="margin-top: 20px;">
-    <a href="{% url 'manage_locations' %}" class="btn-action btn-primary">➕ Quản lý Địa điểm</a>
-</div>
-
+<div class="alert alert-error"><strong>Không thể tính toán:</strong> {{ result.error }}</div>
 {% else %}
 
-<div class="action-bar">
-    <a href="{% url 'map_result' %}" class="btn-action btn-primary">🔄 Tính lại / Chạy lại</a>
-    <a href="{% url 'manage_locations' %}" class="btn-action btn-secondary">📍 Sửa địa điểm ({{ result.n_customers }} Khách hàng)</a>
-</div>
-
-{% if result.stat_p_value %}
-<div style="background: #e1f5fe; padding: 15px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #03a9f4; color: #0277bd;">
-    <strong>📊 Báo cáo Thống Kê (10 lần chạy giả lập mỗi thuật toán):</strong><br>
-    Kết quả thống kê với định lượng <strong>p = {{ result.stat_p_value|floatformat:4 }}</strong> cho thấy thuật toán <strong>{{ result.stat_best_algo }}</strong> là tốt nhất.
-    <iframe src="{% url 'download_tsp' %}" style="display:none;"></iframe>
-</div>
-{% endif %}
-
-<!-- ─── BẢNG TÓM TẮT SO SÁNH ──────────────────────── -->
-<h2 class="section-title">So sánh 4 Thuật Toán (Click để xem bản đồ)</h2>
-<div class="compare-grid">
+<!-- Algo cards -->
+<div class="algo-grid">
     {% for algo_key, data in result.algorithms.items %}
-    <div class="algo-card {% if algo_key == 'NN' %}active{% endif %}" id="card-{{ algo_key }}" onclick="switchAlgorithm('{{ algo_key }}')">
-        {% if data.is_best %}
-        <div class="best-badge">TỐT NHẤT</div>
-        {% endif %}
+    <div class="algo-card {% if algo_key == 'NN' %}active{% endif %}"
+         id="card-{{ algo_key }}" onclick="switchAlgorithm('{{ algo_key }}')">
+        {% if data.is_best %}<div class="best-badge">Tốt nhất</div>{% endif %}
         <div class="algo-name">
-            {% if algo_key == 'NN' %} Nearest Neighbor
-            {% elif algo_key == '2-opt' %} 2-Opt Local Search
-            {% elif algo_key == 'GA' %} Genetic Algorithm
-            {% elif algo_key == 'ACO' %} Ant Colony
+            {% if algo_key == 'NN' %}Nearest Neighbor
+            {% elif algo_key == '2-opt' %}2-Opt Local Search
+            {% elif algo_key == 'GA' %}Genetic Algorithm
+            {% elif algo_key == 'ACO' %}Ant Colony
             {% endif %}
         </div>
-        <div class="algo-dist">{{ data.total_km }} km</div>
-        <div style="font-size: 0.8rem; color: #777;">(OSRM Road Distance)</div>
+        <div class="algo-dist">{{ data.total_km }}</div>
+        <div class="algo-unit">km — đường bộ</div>
     </div>
     {% endfor %}
 </div>
 
-<!-- ─── BẢN ĐỒ ────────────────────────────────── -->
-<div class="map-container">
-    <div id="loading-bar">⏳ Đang vẽ chi tiết bản đồ đường bộ...</div>
-    <div id="result-map"></div>
-</div>
+<!-- 2-col layout -->
+<div class="result-page">
 
-<!-- ─── BẢNG TỪNG CHẶNG CỦA THUẬT TOÁN ĐANG CHỌN ──────────────────────── -->
-<h2 class="section-title">Chi Tiết Từng Chặng: <span id="current-algo-title" style="color:var(--accent);">Nearest Neighbor</span></h2>
-<div id="route-summary" style="background:#fff9eb; border:1px solid #ffeeba; color:#856404; padding:12px 18px; border-radius:6px; margin-bottom:15px; font-weight:500; font-size:1.05rem;">
-    <!-- Route string injected here via JS -->
-</div>
-<div class="segments-table-wrap">
-    <table class="segments-table" id="segments-table">
-        <thead>
-            <tr>
-                <th>Chặng</th>
-                <th>Từ điểm</th>
-                <th>→ Đến điểm</th>
-                <th>Khoảng cách (Đường bộ)</th>
-            </tr>
-        </thead>
-        <tbody id="segments-tbody">
-            <!-- Render via JS -->
-        </tbody>
-    </table>
-</div>
+    <!-- LEFT -->
+    <div>
+        <div class="map-card">
+            <div class="map-card-header">
+                <div class="map-card-title">Tuyến đường: <span id="current-algo-title">Nearest Neighbor</span></div>
+                <span class="badge badge-info">OSRM Live</span>
+            </div>
+            <div class="loading-pill" id="loading-bar">Đang vẽ bản đồ đường bộ...</div>
+            <div class="route-bar" id="route-summary"></div>
+            <div id="result-map"></div>
+        </div>
 
+        <div class="segments-card">
+            <div class="segments-header">
+                <span class="section-title" style="font-size:.85rem;">Chi Tiết Từng Chặng</span>
+                <span class="section-badge" id="segment-count-badge"></span>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Chặng</th><th>Từ điểm</th><th>Đến điểm</th><th>Khoảng cách</th></tr>
+                    </thead>
+                    <tbody id="segments-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="result-right">
+
+        {% if result.stat_p_value %}
+        <div class="pval-card">
+            <div class="section-title" style="font-size:.82rem;margin-bottom:8px;">Phân tích thống kê</div>
+            <div style="font-size:.78rem;color:var(--text-muted);line-height:1.6;">
+                Thuật toán <strong style="color:var(--accent-2);">{{ result.stat_best_algo }}</strong> có xác suất đạt nghiệm tốt hơn các thuật toán còn lại:
+            </div>
+            <div class="pval-num">p = {{ result.stat_p_value|floatformat:4 }}</div>
+            <div class="pval-label">Giá trị xác suất (CDF)</div>
+        </div>
+        {% endif %}
+
+        <div class="actions-card">
+            <div class="section-title" style="font-size:.8rem;margin-bottom:4px;">Hành động</div>
+            <a href="{% url 'map_result' %}" class="btn btn-primary" style="justify-content:center;">Tính lại tuyến đường</a>
+            <a href="{% url 'manage_locations' %}" class="btn btn-secondary" style="justify-content:center;">Sửa địa điểm</a>
+            <a href="{% url 'download_tsp' %}" class="btn btn-secondary" style="justify-content:center;">Tải báo cáo Excel</a>
+        </div>
+
+    </div>
+
+</div>
 {% endif %}
 
+<!-- Data -->
 <script type="application/json" id="map-data">
 {% if not result.error %}
 {
-    "algorithms": {
+    "algorithms":{
         {% for algo_key, data in result.algorithms.items %}
-        "{{ algo_key }}": {
-            "total_km": {{ data.total_km }},
-            "route": [
-                {% for loc in data.route %}
-                {"name": "{{ loc.name|escapejs }}", "lat": {{ loc.latitude }}, "lng": {{ loc.longitude }}, "isDepot": {{ loc.is_depot|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            ],
-            "segments": [
-                {% for seg in data.segments %}
-                {"fromName": "{{ seg.from_name|escapejs }}", "toName": "{{ seg.to_name|escapejs }}", "fromLat": {{ seg.from_lat }}, "fromLng": {{ seg.from_lng }}, "toLat": {{ seg.to_lat }}, "toLng": {{ seg.to_lng }}, "km": {{ seg.km }} }{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            ]
+        "{{ algo_key }}":{
+            "total_km":{{ data.total_km }},
+            "route":[{% for loc in data.route %}{"name":"{{ loc.name|escapejs }}","lat":{{ loc.latitude }},"lng":{{ loc.longitude }},"isDepot":{{ loc.is_depot|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}{% endfor %}],
+            "segments":[{% for seg in data.segments %}{"fromName":"{{ seg.from_name|escapejs }}","toName":"{{ seg.to_name|escapejs }}","fromLat":{{ seg.from_lat }},"fromLng":{{ seg.from_lng }},"toLat":{{ seg.to_lat }},"toLng":{{ seg.to_lng }},"km":{{ seg.km }}}{% if not forloop.last %},{% endif %}{% endfor %}]
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     }
 }
-{% else %}
-{}
-{% endif %}
+{% else %}{}{% endif %}
 </script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    {% if not result.error %}
-    var _d = JSON.parse(document.getElementById('map-data').textContent);
-    var algorithmsData = _d.algorithms;
-    var currentAlgo = 'NN';
+{% if not result.error %}
+var _d = JSON.parse(document.getElementById('map-data').textContent);
+var algorithmsData = _d.algorithms;
+var currentAlgo = 'NN';
 
-    // ── KHỞI TẠO BẢN ĐỒ ─────────────────────────────────────────────
-    var map = L.map('result-map');
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '© CARTO | © OpenStreetMap',
-        subdomains: 'abcd',
-        maxZoom: 19
-    }).addTo(map);
+var map = L.map('result-map');
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+    attribution:'© CARTO | © OpenStreetMap', subdomains:'abcd', maxZoom:19
+}).addTo(map);
 
-    var depotIcon = L.divIcon({
-        html: '<div style="background:#2c3e50;color:white;border-radius:50%;width:34px;height:34px;line-height:34px;text-align:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.5)">🏭</div>',
-        className: '', iconSize: [34, 34], iconAnchor: [17, 17]
-    });
-    var customerIcon = L.divIcon({
-        html: '<div style="background:#3498db;color:white;border-radius:50%;width:30px;height:30px;line-height:30px;text-align:center;font-size:15px;box-shadow:0 2px 5px rgba(0,0,0,0.4)">📦</div>',
-        className: '', iconSize: [30, 30], iconAnchor: [15, 15]
-    });
+var depotIcon = L.divIcon({
+    html:'<div style="background:#1E293B;color:white;border-radius:50%;width:32px;height:32px;line-height:32px;text-align:center;font-size:16px;box-shadow:0 3px 10px rgba(0,0,0,.4)">🏭</div>',
+    className:'', iconSize:[32,32], iconAnchor:[16,16]
+});
+var customerIcon = L.divIcon({
+    html:'<div style="background:#1D4ED8;color:white;border-radius:50%;width:28px;height:28px;line-height:28px;text-align:center;font-size:13px;box-shadow:0 3px 10px rgba(29,78,216,.45)">📦</div>',
+    className:'', iconSize:[28,28], iconAnchor:[14,14]
+});
 
-    var mapLayers = [];
+var mapLayers = [];
 
-    async function fetchFullOsrmRoute(routeCoords, layerGroup) {
-        if (routeCoords.length < 2) return;
-        
-        // Chuỗi tọa độ cho OSRM (lon,lat;lon,lat...)
-        var coordsStr = routeCoords.map(loc => loc.lng + ',' + loc.lat).join(';');
-        var url = 'https://router.project-osrm.org/route/v1/driving/' + coordsStr + '?overview=full&geometries=geojson';
-
-        try {
-            var res = await fetch(url);
-            if(res.ok) {
-                var data = await res.json();
-                if(data.routes && data.routes.length > 0) {
-                    var poly = L.geoJSON(data.routes[0].geometry, {
-                        style: { color: '#3498db', weight: 5, opacity: 0.8 }
-                    }).addTo(map);
-                    layerGroup.push(poly);
-                    return;
-                }
+async function fetchOsrmRoute(routeCoords, layerGroup) {
+    if (routeCoords.length < 2) return;
+    var coordsStr = routeCoords.map(l => l.lng+','+l.lat).join(';');
+    try {
+        var res = await fetch('https://router.project-osrm.org/route/v1/driving/'+coordsStr+'?overview=full&geometries=geojson');
+        if (res.ok) {
+            var data = await res.json();
+            if (data.routes && data.routes.length > 0) {
+                var poly = L.geoJSON(data.routes[0].geometry,{
+                    style:{color:'#3B82F6', weight:5, opacity:.8}
+                }).addTo(map);
+                layerGroup.push(poly);
+                return;
             }
-        } catch(e) { }
-
-        // Fallback đường thẳng đỏ nếu OSRM lỗi
-        for (let i = 0; i < routeCoords.length - 1; i++) {
-            var fb = L.polyline([
-                [routeCoords[i].lat, routeCoords[i].lng], 
-                [routeCoords[i+1].lat, routeCoords[i+1].lng]
-            ], {
-                color: '#e74c3c', weight: 3, dashArray: '6 6'
-            }).addTo(map);
-            layerGroup.push(fb);
         }
+    } catch(e) {}
+    for (let i=0;i<routeCoords.length-1;i++) {
+        var fb = L.polyline([[routeCoords[i].lat,routeCoords[i].lng],[routeCoords[i+1].lat,routeCoords[i+1].lng]],
+            {color:'#EF4444', weight:3, dashArray:'6 5'}).addTo(map);
+        layerGroup.push(fb);
     }
+}
 
-    async function drawAlgorithm(algoKey) {
-        var data = algorithmsData[algoKey];
-        if(!data) return;
-
-        // Cập nhật UI Card & Title
-        document.querySelectorAll('.algo-card').forEach(el => el.classList.remove('active'));
-        var activeCard = document.getElementById('card-' + algoKey);
-        if(activeCard) activeCard.classList.add('active');
-        
-        var nameMap = {'NN':'Nearest Neighbor', '2-opt':'2-Opt Local Search', 'GA':'Genetic Algorithm', 'ACO':'Ant Colony Optimization'};
-        document.getElementById('current-algo-title').innerText = nameMap[algoKey];
-
-        // Tạo chuỗi Lộ trình
-        var routeNames = data.route.map(loc => loc.name);
-        document.getElementById('route-summary').innerHTML = '<strong>Lộ trình:</strong> ' + routeNames.join(' ➔ ');
-
-        // 1. Cập nhật Bảng
-        var tbody = document.getElementById('segments-tbody');
-        tbody.innerHTML = '';
-        data.segments.forEach((seg, idx) => {
-            var tr = document.createElement('tr');
-            var prefix = (idx === 0) ? '🏭 ' : ((idx === data.segments.length - 1) ? '🔙 ' : '');
-            tr.innerHTML = `
-                <td>${idx + 1}</td>
-                <td>${prefix}${seg.fromName}</td>
-                <td>${seg.toName}</td>
-                <td style="color:#27ae60;font-weight:bold;">${seg.km.toFixed(2)} km</td>
-            `;
-            tbody.appendChild(tr);
-        });
-        
-        var trTotal = document.createElement('tr');
-        trTotal.innerHTML = `<td colspan="3"><strong>TỔNG CỘNG</strong></td><td style="font-size:1.1rem;color:var(--primary);">${data.total_km.toFixed(2)} km</td>`;
-        tbody.appendChild(trTotal);
-
-        // 2. Vẽ Bản Đồ
-        mapLayers.forEach(l => map.removeLayer(l));
-        mapLayers = [];
-
-        var bounds = [];
-        // Vẽ markers (trừ kho lặp lại ở cuối)
-        for(let i=0; i<data.route.length - 1; i++) {
-            let loc = data.route[i];
-            let m = L.marker([loc.lat, loc.lng], {icon: loc.isDepot ? depotIcon : customerIcon});
-            m.bindPopup("<b>" + (loc.isDepot ? "Kho" : "Trạm " + i) + "</b><br>" + loc.name).addTo(map);
-            mapLayers.push(m);
-            bounds.push([loc.lat, loc.lng]);
-        }
-        
-        if(bounds.length > 0) {
-            map.fitBounds(bounds, {padding: [50, 50]});
-        }
-
-        // Hiện loading và quét vẽ OSRM bằng 1 request duy nhất
-        document.getElementById('loading-bar').style.display = 'block';
-        await fetchFullOsrmRoute(data.route, mapLayers);
-        document.getElementById('loading-bar').style.display = 'none';
+async function drawAlgorithm(algoKey) {
+    var data = algorithmsData[algoKey];
+    if (!data) return;
+    document.querySelectorAll('.algo-card').forEach(el=>el.classList.remove('active'));
+    var card = document.getElementById('card-'+algoKey);
+    if (card) card.classList.add('active');
+    var nameMap = {'NN':'Nearest Neighbor','2-opt':'2-Opt Local Search','GA':'Genetic Algorithm','ACO':'Ant Colony Optimization'};
+    document.getElementById('current-algo-title').innerText = nameMap[algoKey];
+    document.getElementById('route-summary').innerHTML = '<strong>Lộ trình:</strong> '+data.route.map(l=>l.name).join(' → ');
+    var tbody = document.getElementById('segments-tbody');
+    tbody.innerHTML = '';
+    data.segments.forEach((seg,idx)=>{
+        var tr = document.createElement('tr');
+        tr.innerHTML = `<td style="color:var(--text-muted);font-weight:600;font-size:.78rem;">${idx+1}</td><td><strong style="font-size:.83rem;">${seg.fromName}</strong></td><td style="font-size:.83rem;color:var(--secondary);">${seg.toName}</td><td style="color:#15803D;font-weight:700;font-size:.85rem;">${seg.km.toFixed(2)} km</td>`;
+        tbody.appendChild(tr);
+    });
+    var tot = document.createElement('tr');
+    tot.style.cssText='background:#F8FAFF;';
+    tot.innerHTML=`<td colspan="3" style="font-weight:700;color:var(--primary);font-size:.83rem;">TỔNG CỘNG</td><td style="font-weight:800;background:linear-gradient(90deg,#3B82F6,#6366F1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:.9rem;">${data.total_km.toFixed(2)} km</td>`;
+    tbody.appendChild(tot);
+    var badge = document.getElementById('segment-count-badge');
+    if (badge) badge.textContent = data.segments.length+' chặng';
+    mapLayers.forEach(l=>{ if(l && l.remove) l.remove(); });
+    mapLayers = [];
+    var bounds = [];
+    for(let i=0;i<data.route.length-1;i++){
+        let loc=data.route[i];
+        L.marker([loc.lat,loc.lng],{icon:loc.isDepot?depotIcon:customerIcon})
+            .bindPopup('<b>'+(loc.isDepot?'Kho: ':'Trạm '+i+': ')+'</b>'+loc.name)
+            .addTo(map);
+        bounds.push([loc.lat,loc.lng]);
     }
+    if (bounds.length>0) map.fitBounds(bounds,{padding:[50,50]});
+    document.getElementById('loading-bar').style.display='block';
+    await fetchOsrmRoute(data.route, mapLayers);
+    document.getElementById('loading-bar').style.display='none';
+}
 
-    function switchAlgorithm(algoKey) {
-        if(algoKey === currentAlgo) return;
-        currentAlgo = algoKey;
-        drawAlgorithm(algoKey);
-    }
+function switchAlgorithm(key) {
+    if (key===currentAlgo) return;
+    currentAlgo=key;
+    drawAlgorithm(key);
+}
 
-    // Khởi tạo thuật toán ban đầu (NN)
-    drawAlgorithm('NN');
-
-    {% endif %}
+drawAlgorithm('NN');
+{% endif %}
 </script>
 {% endblock %}

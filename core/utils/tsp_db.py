@@ -179,34 +179,61 @@ def solve_routes_from_db():
         df = pd.DataFrame(all_logs)
         
         # Thống kê
-        stats_df = df.groupby('Algorithm')['Distance'].agg(['mean', 'std', 'var', 'min']).reset_index()
-        stats_df.rename(columns={'mean': 'Mean', 'std': 'Std', 'var': 'Variance', 'min': 'Best'}, inplace=True)
+        stats_df = df.groupby('Algorithm')['Distance'].agg(
+            Mean='mean',
+            Std='std',
+            Variance='var'
+        ).reset_index()
         
-        # Xác định thuật toán tốt nhất (Dựa trên Mean và Std)
-        best_algo_stat = stats_df.sort_values(by=['Mean', 'Std']).iloc[0]['Algorithm']
+        # Xử lý trường hợp đặc biệt: std = 0 hoặc NaN
+        # Thay thế std = 1e-6 để tránh chia cho 0
+        stats_df['Std'] = stats_df['Std'].fillna(1e-6).replace(0, 1e-6)
+        stats_df['Variance'] = stats_df['Variance'].fillna(1e-12).replace(0, 1e-12)
         
-        # Tính p-value (ANOVA)
-        groups = [df[df['Algorithm'] == algo]['Distance'].values for algo in df['Algorithm'].unique()]
-        if len(groups) > 1:
-            f_stat, p_value = stats.f_oneway(*groups)
-        else:
-            p_value = None
+        # Xây dựng giá trị xác suất p cho từng thuật toán
+        import numpy as np
+        algo_stats = stats_df.set_index('Algorithm').to_dict('index')
+        algorithms_list = stats_df['Algorithm'].tolist()
+        
+        p_values = {}
+        for algo_A in algorithms_list:
+            mu_A = algo_stats[algo_A]['Mean']
+            std_A = algo_stats[algo_A]['Std']
             
-        test_result = pd.DataFrame([{
-            'Test': 'ANOVA (p-value)',
-            'p-value': p_value,
-            'Best Algorithm (Stat)': best_algo_stat,
-            'Interpretation': 'Thống kê có sự khác biệt' if p_value and p_value < 0.05 else 'Không có sự khác biệt rõ rệt'
-        }])
+            p_A_list = []
+            for algo_B in algorithms_list:
+                if algo_A == algo_B:
+                    continue
+                mu_B = algo_stats[algo_B]['Mean']
+                std_B = algo_stats[algo_B]['Std']
+                
+                # Z = (μ_B - μ_A) / sqrt(σ_A² + σ_B²)
+                Z = (mu_B - mu_A) / np.sqrt(std_A**2 + std_B**2)
+                # p = Φ(Z)
+                p = stats.norm.cdf(Z)
+                p_A_list.append(p)
+                
+            # p_A = trung bình của P(A < B)
+            p_values[algo_A] = np.mean(p_A_list) if p_A_list else 0.0
+            
+        stats_df['p_value'] = stats_df['Algorithm'].map(p_values)
         
-        stat_p_value = p_value
-        stat_best_algo = best_algo_stat
+        # Chọn thuật toán tốt nhất
+        best_algo_idx = stats_df['p_value'].idxmax()
+        stat_best_algo = stats_df.loc[best_algo_idx, 'Algorithm']
+        stat_p_value = stats_df.loc[best_algo_idx, 'p_value']
+        
+        # Xuất file Excel gồm 3 sheet: Raw_Data, Statistics, Conclusion
+        conclusion_df = pd.DataFrame([{
+            'Best Algorithm': stat_best_algo,
+            'p_value': stat_p_value
+        }])
         
         excel_path = os.path.join(settings.BASE_DIR, 'tsp_results.xlsx')
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name='Raw_Data', index=False)
             stats_df.to_excel(writer, sheet_name='Statistics', index=False)
-            test_result.to_excel(writer, sheet_name='Statistical_Test', index=False)
+            conclusion_df.to_excel(writer, sheet_name='Conclusion', index=False)
             
     except Exception as e:
         print("Lỗi xuất file Excel:", e)
