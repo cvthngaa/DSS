@@ -184,14 +184,12 @@
     <!-- RIGHT -->
     <div class="result-right">
 
-        {% if result.stat_p_value %}
+        {% if result.stat_conclusion %}
         <div class="pval-card">
-            <div class="section-title" style="font-size:.82rem;margin-bottom:8px;">Phân tích thống kê</div>
-            <div style="font-size:.78rem;color:var(--text-muted);line-height:1.6;">
-                Thuật toán <strong style="color:var(--accent-2);">{{ result.stat_best_algo }}</strong> có xác suất đạt nghiệm tốt hơn các thuật toán còn lại:
+            <div class="section-title" style="font-size:.82rem;margin-bottom:10px;">📊 Kết luận thống kê (t-test)</div>
+            <div style="font-size:.82rem;color:var(--primary);line-height:1.7;padding:10px 0;">
+                {{ result.stat_conclusion }}
             </div>
-            <div class="pval-num">p = {{ result.stat_p_value|floatformat:4 }}</div>
-            <div class="pval-label">Giá trị xác suất (CDF)</div>
         </div>
         {% endif %}
 

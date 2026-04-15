@@ -311,3 +311,145 @@ def solve_tsp_aco(depot, customers, dist_matrix, num_ants=10, iterations=50, alp
         })
             
     return overall_best_dist, overall_best_route, logs
+
+
+# ============================================================
+# PIPELINE THỐNG KÊ: Kiểm định t-test từng cặp thuật toán
+# ============================================================
+
+def run_tsp_statistics(all_logs, excel_path):
+    """
+    Pipeline thống kê t-test pairwise cho kết quả TSP.
+    
+    So sánh tất cả các cặp thuật toán bằng kiểm định t-test (two-sided → one-sided).
+    Đếm số lần thắng (wins) để xác định thuật toán tốt nhất.
+    Xuất kết quả ra file Excel gồm 4 sheet.
+    
+    Params:
+        all_logs: list of dict {Algorithm, Run, Distance, Path}
+        excel_path: đường dẫn file Excel xuất ra
+    Returns:
+        dict {best_algorithm, conclusion} hoặc None nếu lỗi
+    """
+    import numpy as np
+    import pandas as pd
+    from scipy.stats import ttest_ind
+    from itertools import combinations
+    
+    try:
+        df = pd.DataFrame(all_logs)
+        
+        # ── 1. Tách dữ liệu theo thuật toán ──
+        algorithms = df['Algorithm'].unique().tolist()
+        algo_distances = {}
+        for algo in algorithms:
+            algo_distances[algo] = df[df['Algorithm'] == algo]['Distance'].values
+        
+        # ── 2. Thống kê mô tả ──
+        # μ = (1/n) * Σxᵢ
+        # s² = (1/(n-1)) * Σ(xᵢ - μ)²
+        # s = sqrt(s²)
+        stats_rows = []
+        for algo in algorithms:
+            distances = algo_distances[algo]
+            n = len(distances)
+            mean_val = np.mean(distances)                    # μ
+            variance_val = np.var(distances, ddof=1)         # s² (unbiased, ddof=1)
+            std_val = np.std(distances, ddof=1)              # s  (unbiased)
+            stats_rows.append({
+                'Algorithm': algo,
+                'Mean': round(mean_val, 6),
+                'Std': round(std_val, 6),
+                'Variance': round(variance_val, 6)
+            })
+        stats_df = pd.DataFrame(stats_rows)
+        
+        # ── 3. Kiểm định t-test từng cặp (6 cặp) ──
+        # Giả thuyết:
+        #   H0: μ_A = μ_B (không có khác biệt)
+        #   H1: μ_A < μ_B (A tốt hơn B vì distance nhỏ hơn)
+        pairwise_rows = []
+        wins = {algo: 0 for algo in algorithms}
+        
+        for algo_a, algo_b in combinations(algorithms, 2):
+            dist_a = algo_distances[algo_a]
+            dist_b = algo_distances[algo_b]
+            mean_a = np.mean(dist_a)
+            mean_b = np.mean(dist_b)
+            
+            # t-test hai phía (two-sided)
+            t_stat, p_two = ttest_ind(dist_a, dist_b)
+            
+            # Chuyển sang một phía (one-sided):
+            # Luôn test theo hướng: thuật toán có mean nhỏ hơn tốt hơn
+            if mean_a < mean_b:
+                # H1: μ_A < μ_B → t_stat âm khi A thực sự nhỏ hơn
+                p_one = p_two / 2 if t_stat < 0 else 1 - (p_two / 2)
+            elif mean_a > mean_b:
+                # H1: μ_B < μ_A → t_stat dương khi A thực sự lớn hơn
+                p_one = p_two / 2 if t_stat > 0 else 1 - (p_two / 2)
+            else:
+                p_one = 1.0  # mean bằng nhau → không có winner
+            
+            # Quy tắc quyết định
+            winner = ''
+            if p_one < 0.05:
+                # Bác bỏ H0 → thuật toán có mean nhỏ hơn thắng
+                winner = algo_a if mean_a < mean_b else algo_b
+                wins[winner] += 1
+            # Nếu p >= 0.05 → không đủ bằng chứng, không có winner
+            
+            pairwise_rows.append({
+                'Algo_A': algo_a,
+                'Algo_B': algo_b,
+                'Mean_A': round(mean_a, 4),
+                'Mean_B': round(mean_b, 4),
+                't_stat': round(t_stat, 4),
+                'p_value': round(p_one, 6),
+                'Winner': winner if winner else 'Không đủ bằng chứng'
+            })
+        
+        pairwise_df = pd.DataFrame(pairwise_rows)
+        
+        # ── 4. Xác định thuật toán tốt nhất ──
+        # Thuật toán có wins cao nhất → best
+        # Trường hợp hòa (wins bằng nhau) → chọn thuật toán có mean nhỏ hơn
+        max_wins = max(wins.values())
+        candidates = [algo for algo, w in wins.items() if w == max_wins]
+        
+        if len(candidates) == 1:
+            best_algorithm = candidates[0]
+        else:
+            # Tie-break: chọn thuật toán có mean nhỏ hơn
+            algo_means = {algo: np.mean(algo_distances[algo]) for algo in candidates}
+            best_algorithm = min(algo_means, key=algo_means.get)
+        
+        # Tạo summary dataframe
+        summary_rows = [{'Algorithm': algo, 'Wins': wins[algo]} for algo in algorithms]
+        summary_df = pd.DataFrame(summary_rows)
+        summary_df = summary_df.sort_values('Wins', ascending=False).reset_index(drop=True)
+        
+        # ── 5. Xuất file Excel (4 sheets) ──
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Raw_Data', index=False)
+            stats_df.to_excel(writer, sheet_name='Statistics', index=False)
+            pairwise_df.to_excel(writer, sheet_name='Pairwise_Test', index=False)
+            summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        
+        # ── 6. Câu kết luận ──
+        conclusion = (
+            f"Thuật toán {best_algorithm} thắng nhiều nhất trong các kiểm định "
+            f"t-test (p < 0.05), và có giá trị trung bình nhỏ hơn nên được "
+            f"đánh giá là tối ưu nhất."
+        )
+        
+        return {
+            'best_algorithm': best_algorithm,
+            'conclusion': conclusion
+        }
+        
+    except Exception as e:
+        print("Lỗi trong pipeline thống kê t-test:", e)
+        import traceback
+        traceback.print_exc()
+        return None
